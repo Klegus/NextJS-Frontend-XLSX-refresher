@@ -9,7 +9,9 @@ interface SelectionControlsProps {
   initialSelection?: Partial<SelectionState>;
 }
 
-interface PlanData {
+interface PlanGroup {
+  id: string;
+  name: string;
   groups: string[];
   timestamp: string;
 }
@@ -19,7 +21,7 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
   initialSelection = {}
 }) => {
     const [faculties, setFaculties] = useState<string[]>([]);
-    const [plans, setPlans] = useState<Record<string, PlanData>>({});
+    const [plans, setPlans] = useState<Record<string, PlanGroup>>({});
     const [selection, setSelection] = useState<Partial<SelectionState>>(initialSelection);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);

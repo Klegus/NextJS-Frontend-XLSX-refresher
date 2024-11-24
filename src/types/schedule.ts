@@ -51,4 +51,41 @@ export interface ServerStatus {
   export interface WeekRange {
     start: Date;
     end: Date;
-  }
+  }export interface Plan {
+  id: string;
+  html: string;
+  timestamp: string;
+  category: string;
+}
+
+export interface ServerStatus {
+  status: string;
+  last_check: string;
+  maintenance_mode: boolean;
+}
+
+export interface SelectionState {
+  category: string;
+  faculty: string;
+  plan: string;
+  group: string;
+}
+
+export interface WeekRange {
+  start: Date;
+  end: Date;
+}
+
+export interface PlanGroup {
+  id: string;
+  name: string;
+  groups: string[];
+  timestamp: string;
+}
+
+export interface Comparison {
+  timestamp: string;
+  newer_plan_timestamp: string;
+  older_plan_timestamp: string;
+  results: Record<string, string>;
+}

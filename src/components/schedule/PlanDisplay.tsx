@@ -2,9 +2,14 @@ import { useEffect, useRef } from 'react';
 import { Plan } from '@/types/schedule';
 import { timeSinceUpdate } from '@/lib/utils';
 import { convertTimeToMinutes } from '@/lib/utils';
+import { Plan } from '@/types/schedule';
+
 interface PlanDisplayProps {
-  plan: string; // HTML planu
-  currentWeek: WeekRange;
+  plan: Plan;
+  currentWeek?: {
+    start: Date;
+    end: Date;
+  };
   onTimeSlotChange?: (current: string | null, next: string | null) => void;
 }
 
