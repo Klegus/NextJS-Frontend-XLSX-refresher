@@ -11,6 +11,8 @@ interface PlanDisplayProps {
   onTimeSlotChange?: (current: string | null, next: string | null) => void;
 }
 
+const FILTER_TOGGLE_KEY = 'planFilterEnabled';
+
 export const PlanDisplay: React.FC<PlanDisplayProps> = ({
     plan,
     currentWeek,
@@ -18,6 +20,13 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [filteredHtml, setFilteredHtml] = useState(plan.html);
+    const [filterEnabled, setFilterEnabled] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem(FILTER_TOGGLE_KEY);
+            return saved !== null ? saved === 'true' : true;
+        }
+        return true;
+    });
 
     const filterPlanForCurrentWeek = (html: string, weekRange: { start: Date; end: Date }) => {
         const parser = new DOMParser();
@@ -83,13 +92,19 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
     };
 
     useEffect(() => {
-        if (plan.category === 'st' && currentWeek) {
+        if (plan.category === 'st' && currentWeek && filterEnabled) {
             const filtered = filterPlanForCurrentWeek(plan.html, currentWeek);
             setFilteredHtml(filtered);
         } else {
             setFilteredHtml(plan.html);
         }
-    }, [plan, currentWeek]);
+    }, [plan, currentWeek, filterEnabled]);
+
+    const handleFilterToggle = () => {
+        const newValue = !filterEnabled;
+        setFilterEnabled(newValue);
+        localStorage.setItem(FILTER_TOGGLE_KEY, String(newValue));
+    };
 
     useEffect(() => {
         const highlightCurrentTimeSlot = () => {
@@ -150,7 +165,25 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
     return (
         <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold text-wspia-gray">Plan zajęć</h2>
+                <div className="flex items-center gap-4">
+                    <h2 className="text-2xl font-bold text-wspia-gray">Plan zajęć</h2>
+                    {plan.category === 'st' && (
+                        <div className="flex items-center gap-2">
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    className="sr-only peer"
+                                    checked={filterEnabled}
+                                    onChange={handleFilterToggle}
+                                />
+                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-wspia-red/20 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-wspia-red"></div>
+                                <span className="ms-3 text-sm font-medium text-gray-600">
+                                    Filtruj plan
+                                </span>
+                            </label>
+                        </div>
+                    )}
+                </div>
                 <span className="text-sm text-gray-500">
                     Ostatnia aktualizacja: {timeSinceUpdate(plan.timestamp)}
                 </span>
