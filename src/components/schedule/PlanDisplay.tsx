@@ -256,12 +256,14 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                 </span>
             </div>
 
-            <div
-                ref={containerRef}
-                className="overflow-x-auto relative min-w-[800px] lg:min-w-0"
-                id="plan-content"
-                dangerouslySetInnerHTML={{ __html: filteredHtml }}
-            />
+            <div className="overflow-x-auto">
+                <div
+                    ref={containerRef}
+                    className="relative min-w-[800px] lg:min-w-0"
+                    id="plan-content"
+                    dangerouslySetInnerHTML={{ __html: filteredHtml }}
+                />
+            </div>
         </div>
     );
 };
