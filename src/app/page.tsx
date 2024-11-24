@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import MaintenancePage from './maintenance';
 import { SelectionControls } from '@/components/schedule/SelectionControls';
 import { PlanDisplay } from '@/components/schedule/PlanDisplay';
@@ -13,25 +13,29 @@ import { Plan, SelectionState } from '@/types/schedule';
 import { getPlan } from '@/lib/api';
 
 export default function HomePage() {
+  const [loading, setLoading] = useState(true);
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
   const [selection, setSelection] = useState<Partial<SelectionState>>({});
 
-  const checkMaintenanceStatus = useCallback(async () => {
-    try {
-      const response = await fetch('/api/status');
-      const data = await response.json();
-      setIsMaintenanceMode(data.maintenance_mode === true);
-    } catch (error) {
-      console.error('Failed to check maintenance status:', error);
-    }
+  useEffect(() => {
+    const checkMaintenanceStatus = async () => {
+      try {
+        const response = await fetch('/api/status');
+        const data = await response.json();
+        setIsMaintenanceMode(data.maintenance_mode === true);
+      } catch (error) {
+        console.error('Failed to check maintenance status:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkMaintenanceStatus();
   }, []);
 
-  useEffect(() => {
-    // Check maintenance status immediately and every 30 seconds
-    checkMaintenanceStatus();
-    const interval = setInterval(checkMaintenanceStatus, 30000);
-    return () => clearInterval(interval);
-  }, [checkMaintenanceStatus]);
+  if (loading) {
+    return <LoadingSpinner />;
+  }
 
   if (isMaintenanceMode) {
     return <MaintenancePage />;
