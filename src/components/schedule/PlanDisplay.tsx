@@ -73,9 +73,9 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                     return;
                 }
 
-                // Make subject names bold
-                const cellContent = cell.innerHTML.replace(
-                    /^(.*?)(?=\s*<br|$)/gm,
+                // Make text before first dash bold, except for time column
+                const cellContent = index === 0 ? cell.innerHTML : cell.innerHTML.replace(
+                    /^([^-]+?)(?=-)/,
                     '<strong class="text-wspia-gray">$1</strong>'
                 );
                 if (cellContent && cellContent.trim() !== '') {
