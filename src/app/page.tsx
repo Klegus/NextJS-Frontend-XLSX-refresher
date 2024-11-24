@@ -45,7 +45,6 @@ export default function HomePage() {
     const now = new Date();
     return getWeekRange(shouldShowNextWeek() ? new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000) : now);
   });
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentTimeSlot, setCurrentTimeSlot] = useState<string | null>(null);
   const [nextTimeSlot, setNextTimeSlot] = useState<string | null>(null);
