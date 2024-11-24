@@ -142,11 +142,7 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
   };
 
   return (
-    <div className={`space-y-4 transition-all duration-300 ease-in-out ${
-      !selection.group 
-        ? 'w-full max-w-md mx-auto mb-8' 
-        : 'w-full max-w-md ml-8 mb-8'
-    }`}>
+    <div className="space-y-4 transition-all duration-300 ease-in-out w-full">
       {error && (
         <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
           <p className="text-red-700">{error}</p>

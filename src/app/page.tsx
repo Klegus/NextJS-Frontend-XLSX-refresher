@@ -102,8 +102,8 @@ export default function HomePage() {
         {/* Main Content Grid */}
         <div className={`grid ${plan ? 'grid-cols-1 lg:grid-cols-12' : 'grid-cols-1'} gap-8`}>
           {/* Selection Controls */}
-          <div className={`${plan ? 'lg:col-span-3' : 'mx-auto w-full max-w-md'}`}>
-            <div className="bg-white rounded-lg shadow-lg p-6">
+          <div className={`${plan ? 'lg:col-span-3' : 'mx-auto'} w-full max-w-md`}>
+            <div className="bg-white rounded-lg shadow-lg p-6 w-full">
               <SelectionControls
                 onSelectionChange={handleSelectionChange}
                 initialSelection={selection}
