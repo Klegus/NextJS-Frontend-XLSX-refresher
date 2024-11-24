@@ -6,8 +6,11 @@ export async function GET(
   { params }: { params: { collection: string; group: string } }
 ) {
   try {
+    const collection = await params.collection;
+    const group = await params.group;
+    
     const response = await fetch(
-      `${API_URL}/api/plan/${params.collection}/${params.group}`
+      `${API_URL}/api/plan/${collection}/${group}`
     );
     const data = await response.json();
     return NextResponse.json(data);
