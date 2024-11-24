@@ -16,13 +16,21 @@ interface PlanGroup {
   timestamp: string;
 }
 
+const LAST_SELECTION_KEY = 'lastPlanSelection';
+
 export const SelectionControls: React.FC<SelectionControlsProps> = ({
   onSelectionChange,
   initialSelection = {}
 }) => {
     const [faculties, setFaculties] = useState<string[]>([]);
     const [plans, setPlans] = useState<Record<string, PlanGroup>>({});
-    const [selection, setSelection] = useState<Partial<SelectionState>>(initialSelection);
+    const [selection, setSelection] = useState<Partial<SelectionState>>(() => {
+      if (typeof window !== 'undefined') {
+        const savedSelection = localStorage.getItem(LAST_SELECTION_KEY);
+        return savedSelection ? JSON.parse(savedSelection) : initialSelection;
+      }
+      return initialSelection;
+    });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -105,6 +113,11 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
 
     setSelection(newSelection);
     onSelectionChange(newSelection);
+    
+    // Save selection to localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(LAST_SELECTION_KEY, JSON.stringify(newSelection));
+    }
   };
 
   const getAvailableGroups = () => {
