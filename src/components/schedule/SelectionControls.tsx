@@ -149,7 +149,7 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
         </div>
       )}
 
-      <div className="select-wrapper">
+      <div className={`select-wrapper ${selection.category ? 'active' : ''}`}>
         <label className="block text-wspia-gray font-medium mb-2">
           Wybierz tryb studiów:
         </label>
@@ -166,59 +166,59 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
         </select>
       </div>
 
-      <div className="select-wrapper">
-        <label className="block text-wspia-gray font-medium mb-2">
-          Wybierz kierunek:
-        </label>
-        <select
-          className="w-full p-3 border rounded-lg shadow-sm focus:border-wspia-red focus:ring-1 focus:ring-wspia-red"
-          value={selection.faculty || ''}
-          onChange={(e) => handleSelectionChange('faculty', e.target.value)}
-          disabled={!selection.category || loading}
-        >
-          <option value="">
-            {!selection.category ? 'Najpierw wybierz tryb studiów' : 'Wybierz kierunek'}
-          </option>
-          {faculties.map((faculty) => (
-            <option key={faculty} value={faculty}>{faculty}</option>
-          ))}
-        </select>
-      </div>
+      {selection.category && (
+        <div className={`select-wrapper animate-slideDown ${selection.faculty ? 'active' : ''}`}>
+          <label className="block text-wspia-gray font-medium mb-2">
+            Wybierz kierunek:
+          </label>
+          <select
+            className="w-full p-3 border rounded-lg shadow-sm focus:border-wspia-red focus:ring-1 focus:ring-wspia-red"
+            value={selection.faculty || ''}
+            onChange={(e) => handleSelectionChange('faculty', e.target.value)}
+            disabled={loading}
+          >
+            <option value="">Wybierz kierunek</option>
+            {faculties.map((faculty) => (
+              <option key={faculty} value={faculty}>{faculty}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
-      <div className="select-wrapper">
-        <label className="block text-wspia-gray font-medium mb-2">
-          Wybierz plan:
-        </label>
-        <select
-          className="w-full p-3 border rounded-lg shadow-sm focus:border-wspia-red focus:ring-1 focus:ring-wspia-red"
-          value={selection.plan || ''}
-          onChange={(e) => handleSelectionChange('plan', e.target.value)}
-          disabled={!selection.faculty}
-        >
-          <option value="">
-            {selection.faculty ? 'Wybierz plan' : 'Najpierw wybierz kierunek'}
-          </option>
-          {Object.values(plans).map((plan) => (
-            <option key={plan.id} value={plan.id}>
-              {plan.name}
-            </option>
-          ))}
-        </select>
-      </div>
+      {selection.faculty && (
+        <div className={`select-wrapper animate-slideDown ${selection.plan ? 'active' : ''}`}>
+          <label className="block text-wspia-gray font-medium mb-2">
+            Wybierz plan:
+          </label>
+          <select
+            className="w-full p-3 border rounded-lg shadow-sm focus:border-wspia-red focus:ring-1 focus:ring-wspia-red"
+            value={selection.plan || ''}
+            onChange={(e) => handleSelectionChange('plan', e.target.value)}
+          >
+            <option value="">Wybierz plan</option>
+            {Object.values(plans).map((plan) => (
+              <option key={plan.id} value={plan.id}>
+                {plan.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
-      <div className="select-wrapper">
-        <label className="block text-wspia-gray font-medium mb-2">
-          Wybierz grupę:
-        </label>
-        <select
-          className="w-full p-3 border rounded-lg shadow-sm focus:border-wspia-red focus:ring-1 focus:ring-wspia-red"
-          value={selection.group || ''}
-          onChange={(e) => handleSelectionChange('group', e.target.value)}
-          disabled={!selection.plan}
-        >
-          {renderGroups()}
-        </select>
-      </div>
+      {selection.plan && (
+        <div className="select-wrapper animate-slideDown">
+          <label className="block text-wspia-gray font-medium mb-2">
+            Wybierz grupę:
+          </label>
+          <select
+            className="w-full p-3 border rounded-lg shadow-sm focus:border-wspia-red focus:ring-1 focus:ring-wspia-red"
+            value={selection.group || ''}
+            onChange={(e) => handleSelectionChange('group', e.target.value)}
+          >
+            {renderGroups()}
+          </select>
+        </div>
+      )}
     </div>
   );
 };
