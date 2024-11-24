@@ -16,10 +16,13 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
   const [isExpanded, setIsExpanded] = useState(false);
 
   const handleExpandClick = () => {
+    setIsExpanded(!isExpanded);
+  };
+
+  const handleMouseEnter = () => {
     if (isNew && onRead) {
       onRead(activity.id);
     }
-    setIsExpanded(!isExpanded);
   };
 
   const renderActivityContent = () => {
@@ -101,6 +104,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
       className={`activity-item p-4 rounded-lg transition-all ${
         isNew ? 'border-2 border-wspia-red/50 bg-wspia-red/5' : 'border border-gray-200'
       }`}
+      onMouseEnter={handleMouseEnter}
     >
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
