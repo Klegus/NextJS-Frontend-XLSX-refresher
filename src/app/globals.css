@@ -366,6 +366,36 @@ select:focus {
   transform: translateY(-2px);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
 }
+@keyframes slideToLeft {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+}
+
+@keyframes slideFromRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.slide-exit {
+  animation: slideToLeft 0.5s ease-in-out forwards;
+}
+
+.slide-enter {
+  animation: slideFromRight 0.5s ease-in-out forwards;
+}
+
 .selection-container {
   max-width: 500px;
   margin: 0 auto;
@@ -374,6 +404,7 @@ select:focus {
   border-radius: 1rem;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   transition: all 0.5s ease;
+  position: relative;
 }
 
 .selection-container.expanded {
