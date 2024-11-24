@@ -1,8 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Plan } from '@/types/schedule';
-import { timeSinceUpdate } from '@/lib/utils';
-import { convertTimeToMinutes } from '@/lib/utils';
-import { Plan } from '@/types/schedule';
+import { timeSinceUpdate, convertTimeToMinutes } from '@/lib/utils';
 
 interface PlanDisplayProps {
   plan: Plan;
@@ -19,6 +17,79 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
     onTimeSlotChange
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
+    const [filteredHtml, setFilteredHtml] = useState(plan.html);
+
+    const filterPlanForCurrentWeek = (html: string, weekRange: { start: Date; end: Date }) => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const table = doc.querySelector('table');
+        
+        if (!table) return html;
+
+        const rows = table.querySelectorAll('tr');
+        const headerRow = rows[0];
+        const headerCells = headerRow.querySelectorAll('th');
+
+        // Aktualizuj nagłówki z datami
+        headerCells.forEach((cell, index) => {
+            if (index > 0 && index <= 5) { // Tylko dla dni roboczych (pon-pt)
+                const date = new Date(weekRange.start);
+                date.setDate(weekRange.start.getDate() + (index - 1));
+                const originalText = cell.textContent?.split('(')[0].trim() || '';
+                const formattedDate = date.toLocaleDateString('pl-PL', { 
+                    day: '2-digit',
+                    month: '2-digit'
+                });
+                cell.textContent = `${originalText} (${formattedDate})`;
+            }
+        });
+
+        // Filtruj wiersze z lekcjami
+        for (let i = 1; i < rows.length; i++) {
+            const row = rows[i];
+            const cells = row.querySelectorAll('td');
+            let hasLessonsInWeek = false;
+
+            cells.forEach((cell, index) => {
+                if (index === 0) return; // Pomijamy kolumnę z godzinami
+                if (index > 5) { // Ukryj kolumny po piątku
+                    cell.style.display = 'none';
+                    return;
+                }
+
+                const cellContent = cell.innerHTML;
+                if (cellContent && cellContent.trim() !== '') {
+                    const date = new Date(weekRange.start);
+                    date.setDate(weekRange.start.getDate() + (index - 1));
+                    const dateStr = date.toLocaleDateString('pl-PL', {
+                        day: '2-digit',
+                        month: '2-digit'
+                    });
+
+                    if (!cellContent.includes(dateStr)) {
+                        cell.innerHTML = '';
+                    } else {
+                        hasLessonsInWeek = true;
+                    }
+                }
+            });
+
+            if (!hasLessonsInWeek) {
+                row.style.display = 'none';
+            }
+        }
+
+        return table.outerHTML;
+    };
+
+    useEffect(() => {
+        if (plan.category === 'st' && currentWeek) {
+            const filtered = filterPlanForCurrentWeek(plan.html, currentWeek);
+            setFilteredHtml(filtered);
+        } else {
+            setFilteredHtml(plan.html);
+        }
+    }, [plan, currentWeek]);
 
     useEffect(() => {
         const highlightCurrentTimeSlot = () => {
@@ -89,7 +160,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                 ref={containerRef}
                 className="overflow-x-auto relative"
                 id="plan-content"
-                dangerouslySetInnerHTML={{ __html: plan.html }}
+                dangerouslySetInnerHTML={{ __html: filteredHtml }}
             />
         </div>
     );
