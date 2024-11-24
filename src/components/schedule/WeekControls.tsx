@@ -21,13 +21,12 @@ interface WeekControlsProps {
     };
   
     return (
-      <div className="flex items-center justify-between px-4 py-2 bg-white rounded-lg shadow-sm">
+      <div className="flex items-center justify-between px-4 py-2 bg-white rounded-lg shadow-sm mb-4">
         <button
           onClick={onPrevWeek}
           disabled={isPrevDisabled}
           className="px-4 py-2 text-wspia-red border-2 border-wspia-red rounded-lg
-                   hover:bg-wspia-red hover:text-white disabled:opacity-50
-                   disabled:cursor-not-allowed transition-colors"
+                   disabled:opacity-50 disabled:cursor-not-allowed"
         >
           ← <span className="hidden sm:inline">Poprzedni tydzień</span>
           <span className="sm:hidden">Poprzedni</span>
@@ -41,8 +40,7 @@ interface WeekControlsProps {
           onClick={onNextWeek}
           disabled={isNextDisabled}
           className="px-4 py-2 text-wspia-red border-2 border-wspia-red rounded-lg
-                   hover:bg-wspia-red hover:text-white disabled:opacity-50
-                   disabled:cursor-not-allowed transition-colors"
+                   disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <span className="hidden sm:inline">Następny tydzień</span>
           <span className="sm:hidden">Następny</span> →
