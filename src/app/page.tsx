@@ -95,7 +95,7 @@ export default function HomePage() {
             />
           </div>
           <h1 className="text-4xl font-bold text-gray-800 mb-4">
-            Plan Lekcji
+            {selection.group ? `Plan zajęć - Grupa ${selection.group}` : 'Plan zajęć'}
           </h1>
         </div>
 

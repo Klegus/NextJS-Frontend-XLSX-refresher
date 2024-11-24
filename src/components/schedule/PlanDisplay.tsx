@@ -72,7 +72,11 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                     return;
                 }
 
-                const cellContent = cell.innerHTML;
+                // Make subject names bold
+                const cellContent = cell.innerHTML.replace(
+                    /^(.*?)(?=\s*<br|$)/gm,
+                    '<strong class="text-wspia-gray">$1</strong>'
+                );
                 if (cellContent && cellContent.trim() !== '') {
                     const date = new Date(weekRange.start);
                     date.setDate(weekRange.start.getDate() + (index - 1));
