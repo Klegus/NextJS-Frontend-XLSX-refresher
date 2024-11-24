@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import MaintenancePage from './maintenance';
 import { SelectionControls } from '@/components/schedule/SelectionControls';
 import { PlanDisplay } from '@/components/schedule/PlanDisplay';
 import { BlogSection } from '@/components/activities/BlogSection';
@@ -12,7 +13,29 @@ import { Plan, SelectionState } from '@/types/schedule';
 import { getPlan } from '@/lib/api';
 
 export default function HomePage() {
+  const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
   const [selection, setSelection] = useState<Partial<SelectionState>>({});
+
+  const checkMaintenanceStatus = useCallback(async () => {
+    try {
+      const response = await fetch('/api/status');
+      const data = await response.json();
+      setIsMaintenanceMode(data.maintenance_mode === true);
+    } catch (error) {
+      console.error('Failed to check maintenance status:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Check maintenance status immediately and every 30 seconds
+    checkMaintenanceStatus();
+    const interval = setInterval(checkMaintenanceStatus, 30000);
+    return () => clearInterval(interval);
+  }, [checkMaintenanceStatus]);
+
+  if (isMaintenanceMode) {
+    return <MaintenancePage />;
+  }
   const [plan, setPlan] = useState<Plan | null>(null);
   const [currentWeek, setCurrentWeek] = useState(() => {
     const now = new Date();

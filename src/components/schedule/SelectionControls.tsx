@@ -178,7 +178,7 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
             disabled={loading}
           >
             <option value="">Wybierz kierunek</option>
-            {faculties.map((faculty) => (
+            {faculties.sort().map((faculty) => (
               <option key={faculty} value={faculty}>{faculty}</option>
             ))}
           </select>
@@ -196,7 +196,7 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
             onChange={(e) => handleSelectionChange('plan', e.target.value)}
           >
             <option value="">Wybierz plan</option>
-            {Object.values(plans).map((plan) => (
+            {Object.values(plans).sort((a, b) => a.name.localeCompare(b.name)).map((plan) => (
               <option key={plan.id} value={plan.id}>
                 {plan.name}
               </option>
