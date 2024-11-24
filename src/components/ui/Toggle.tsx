@@ -15,8 +15,8 @@ export const Toggle: React.FC<ToggleProps> = ({ checked, onChange, label }) => {
                 relative inline-flex h-6 w-11 items-center rounded-full
                 transition-colors duration-200 ease-in-out
                 focus:outline-none focus:ring-2 focus:ring-wspia-red/20 focus:ring-offset-2
-                ${checked ? 'bg-[#e31e24]' : 'bg-gray-200'}
-                border-2 border-gray-400 hover:border-gray-500
+                ${checked ? 'bg-[#e31e24]' : 'bg-[#e31e24]/20'}
+                border-2 border-[#e31e24]/40 hover:border-[#e31e24]/60
             `}
         >
             <span className="sr-only">{label}</span>
