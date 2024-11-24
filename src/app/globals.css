@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
   --wspaa-red: #e31e24;
   --wspia-gray: #58595b;

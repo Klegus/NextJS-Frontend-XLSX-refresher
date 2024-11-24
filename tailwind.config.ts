@@ -16,3 +16,24 @@ export default {
   },
   plugins: [],
 } satisfies Config;
+import type { Config } from 'tailwindcss'
+
+const config: Config = {
+  content: [
+    './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/components/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/app/**/*.{js,ts,jsx,tsx,mdx}',
+  ],
+  theme: {
+    extend: {
+      colors: {
+        'wspia-red': 'var(--wspaa-red)',
+        'wspia-gray': 'var(--wspia-gray)',
+        'wspia-light-gray': 'var(--wspia-light-gray)',
+      },
+    },
+  },
+  plugins: [],
+}
+
+export default config

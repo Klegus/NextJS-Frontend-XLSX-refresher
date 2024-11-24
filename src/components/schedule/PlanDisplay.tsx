@@ -87,7 +87,8 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
 
             <div
                 ref={containerRef}
-                className="overflow-x-auto"
+                className="overflow-x-auto relative"
+                id="plan-content"
                 dangerouslySetInnerHTML={{ __html: plan.html }}
             />
         </div>
