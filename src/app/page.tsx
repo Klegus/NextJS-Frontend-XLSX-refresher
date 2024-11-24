@@ -110,7 +110,7 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="max-w-7xl mx-auto py-12">
+      <div className="max-w-7xl mx-4 lg:mx-8 py-12">
         {/* Logo and Header */}
         <div className="text-center mb-12">
           <div className="w-32 h-32 mx-auto mb-6 bg-white rounded-full shadow-lg overflow-hidden flex items-center justify-center">
@@ -132,7 +132,7 @@ export default function HomePage() {
             plan ? 
             'w-full lg:w-[300px] selection-controls-enter' : 
             ''
-          } transition-all duration-500 px-4`}>
+          } transition-all duration-500 lg:px-0 px-4`}>
             <div className="bg-white rounded-lg shadow-lg p-6 w-full">
               <SelectionControls
                 onSelectionChange={handleSelectionChange}
@@ -142,7 +142,7 @@ export default function HomePage() {
           </div>
 
           {/* Schedule Display */}
-          <div className={`${plan ? 'w-full lg:flex-1 px-4' : 'hidden'} transition-all duration-500`}>
+          <div className={`${plan ? 'w-full lg:flex-1 lg:px-8 px-4' : 'hidden'} transition-all duration-500`}>
             {loading ? (
               <LoadingSpinner />
             ) : (
