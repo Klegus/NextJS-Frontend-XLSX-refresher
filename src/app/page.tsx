@@ -16,6 +16,15 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
   const [selection, setSelection] = useState<Partial<SelectionState>>({});
+  const [plan, setPlan] = useState<Plan | null>(null);
+  const [currentWeek, setCurrentWeek] = useState(() => {
+    const now = new Date();
+    return getWeekRange(shouldShowNextWeek() ? new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000) : now);
+  });
+  const [error, setError] = useState<string | null>(null);
+  const [currentTimeSlot, setCurrentTimeSlot] = useState<string | null>(null);
+  const [nextTimeSlot, setNextTimeSlot] = useState<string | null>(null);
+  const [weekOffset, setWeekOffset] = useState(0);
 
   useEffect(() => {
     const checkMaintenanceStatus = async () => {
@@ -40,15 +49,6 @@ export default function HomePage() {
   if (isMaintenanceMode) {
     return <MaintenancePage />;
   }
-  const [plan, setPlan] = useState<Plan | null>(null);
-  const [currentWeek, setCurrentWeek] = useState(() => {
-    const now = new Date();
-    return getWeekRange(shouldShowNextWeek() ? new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000) : now);
-  });
-  const [error, setError] = useState<string | null>(null);
-  const [currentTimeSlot, setCurrentTimeSlot] = useState<string | null>(null);
-  const [nextTimeSlot, setNextTimeSlot] = useState<string | null>(null);
-  const [weekOffset, setWeekOffset] = useState(0);
 
   useEffect(() => {
     // Load saved selection from localStorage
