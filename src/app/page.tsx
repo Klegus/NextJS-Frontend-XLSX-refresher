@@ -87,11 +87,11 @@ export default function HomePage() {
       <div className="max-w-7xl mx-auto px-4 py-12">
         {/* Logo and Header */}
         <div className="text-center mb-12">
-          <div className="w-32 h-32 mx-auto mb-6 bg-white p-4 rounded-full shadow-lg">
+          <div className="w-32 h-32 mx-auto mb-6 bg-white rounded-full shadow-lg overflow-hidden flex items-center justify-center">
             <img
               src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSAvu7fXk3m4Lz5iwLKJHAPKlelKnT8CjI-Bg&s"
               alt="WSPiA Logo"
-              className="w-full h-full object-contain"
+              className="w-24 h-24 object-contain"
             />
           </div>
           <h1 className="text-4xl font-bold text-gray-800 mb-4">
@@ -100,9 +100,9 @@ export default function HomePage() {
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className={`grid ${plan ? 'grid-cols-1 lg:grid-cols-12' : 'grid-cols-1'} gap-8`}>
           {/* Selection Controls */}
-          <div className="lg:col-span-3">
+          <div className={`${plan ? 'lg:col-span-3' : 'mx-auto w-full max-w-md'}`}>
             <div className="bg-white rounded-lg shadow-lg p-6">
               <SelectionControls
                 onSelectionChange={handleSelectionChange}
@@ -112,7 +112,7 @@ export default function HomePage() {
           </div>
 
           {/* Schedule Display */}
-          <div className="lg:col-span-9">
+          <div className={`${plan ? 'lg:col-span-9' : 'hidden'}`}>
             {loading ? (
               <LoadingSpinner />
             ) : (
