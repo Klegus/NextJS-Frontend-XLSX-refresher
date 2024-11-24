@@ -109,7 +109,7 @@ export default function HomePage() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <main className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200">
       <div className="max-w-[1400px] mx-auto py-12 relative">
         {/* Logo and Header */}
         <div className="text-center mb-12">
