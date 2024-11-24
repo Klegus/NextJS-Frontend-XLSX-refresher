@@ -1,101 +1,165 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useState, useEffect } from 'react';
+import { SelectionControls } from '@/components/schedule/SelectionControls';
+import { PlanDisplay } from '@/components/schedule/PlanDisplay';
+import { BlogSection } from '@/components/activities/BlogSection';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { WeekControls } from '@/components/schedule/WeekControls';
+import { CurrentLessonInfo } from '@/components/schedule/CurrentLessonInfo';
+import { getWeekRange, shouldShowNextWeek } from '@/lib/utils';
+import { Plan, SelectionState } from '@/types/schedule';
+import { getPlan } from '@/lib/api';
+
+export default function HomePage() {
+  const [selection, setSelection] = useState<Partial<SelectionState>>({});
+  const [plan, setPlan] = useState<Plan | null>(null);
+  const [currentWeek, setCurrentWeek] = useState(() => {
+    const now = new Date();
+    return getWeekRange(shouldShowNextWeek() ? new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000) : now);
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [currentTimeSlot, setCurrentTimeSlot] = useState<string | null>(null);
+  const [nextTimeSlot, setNextTimeSlot] = useState<string | null>(null);
+  const [weekOffset, setWeekOffset] = useState(0);
+
+  useEffect(() => {
+    // Load saved selection from localStorage
+    const saved = localStorage.getItem('schedule-selection');
+    if (saved) {
+      try {
+        const parsedSelection = JSON.parse(saved);
+        setSelection(parsedSelection);
+      } catch (error) {
+        console.error('Failed to parse saved selection:', error);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const loadPlan = async () => {
+      if (selection.plan && selection.group) {
+        setLoading(true);
+        try {
+          const newPlan = await getPlan(selection.plan, selection.group);
+          setPlan(newPlan);
+          setError(null);
+        } catch (err) {
+          setError('Nie udało się załadować planu. Spróbuj ponownie później.');
+          console.error('Failed to load plan:', err);
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        setPlan(null);
+      }
+    };
+
+    loadPlan();
+  }, [selection.plan, selection.group]);
+
+  const handleSelectionChange = (newSelection: Partial<SelectionState>) => {
+    setSelection(newSelection);
+    localStorage.setItem('schedule-selection', JSON.stringify(newSelection));
+  };
+
+  const handleWeekChange = (direction: 'prev' | 'next') => {
+    if (direction === 'next' && weekOffset < 1) {
+      setWeekOffset(prev => prev + 1);
+      setCurrentWeek(prev => {
+        const newDate = new Date(prev.start);
+        newDate.setDate(newDate.getDate() + 7);
+        return getWeekRange(newDate);
+      });
+    } else if (direction === 'prev' && weekOffset > 0) {
+      setWeekOffset(prev => prev - 1);
+      setCurrentWeek(prev => {
+        const newDate = new Date(prev.start);
+        newDate.setDate(newDate.getDate() - 7);
+        return getWeekRange(newDate);
+      });
+    }
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+    <main className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="max-w-7xl mx-auto px-4 py-12">
+        {/* Logo and Header */}
+        <div className="text-center mb-12">
+          <div className="w-32 h-32 mx-auto mb-6 bg-white p-4 rounded-full shadow-lg">
+            <img
+              src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSAvu7fXk3m4Lz5iwLKJHAPKlelKnT8CjI-Bg&s"
+              alt="WSPiA Logo"
+              className="w-full h-full object-contain"
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+          </div>
+          <h1 className="text-4xl font-bold text-gray-800 mb-4">
+            Plan Lekcji
+          </h1>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* Selection Controls */}
+          <div className="lg:col-span-3">
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <SelectionControls
+                onSelectionChange={handleSelectionChange}
+                initialSelection={selection}
+              />
+            </div>
+          </div>
+
+          {/* Schedule Display */}
+          <div className="lg:col-span-9">
+            {loading ? (
+              <LoadingSpinner />
+            ) : (
+              <>
+                {error && (
+                  <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
+                    <p className="text-red-700">{error}</p>
+                  </div>
+                )}
+                
+                {plan && (
+                  <>
+                    <CurrentLessonInfo
+                      currentTimeSlot={currentTimeSlot}
+                      nextTimeSlot={nextTimeSlot}
+                    />
+                    
+                    {plan.category === 'st' && (
+                      <WeekControls
+                        onPrevWeek={() => handleWeekChange('prev')}
+                        onNextWeek={() => handleWeekChange('next')}
+                        currentWeek={currentWeek}
+                        isPrevDisabled={weekOffset === 0}
+                        isNextDisabled={weekOffset === 1}
+                      />
+                    )}
+                    
+                    <PlanDisplay
+                      plan={plan}
+                      currentWeek={currentWeek}
+                      onTimeSlotChange={(current, next) => {
+                        setCurrentTimeSlot(current);
+                        setNextTimeSlot(next);
+                      }}
+                    />
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Blog Section */}
+        <div className="mt-12">
+          <BlogSection />
+        </div>
+      </div>
+    </main>
   );
 }
