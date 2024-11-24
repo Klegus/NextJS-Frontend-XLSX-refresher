@@ -1,9 +1,6 @@
 'use client';
-/* @license
- * This code is protected and obfuscated
- * (c) 2024 Your Company
- */
-const _0x4f2a=['useState','useEffect'];const[useState,useEffect]=_0x4f2a.map(x=>require('react')[x]);
+
+import { useState, useEffect } from 'react';
 import MaintenancePage from './maintenance';
 import { SelectionControls } from '@/components/schedule/SelectionControls';
 import { PlanDisplay } from '@/components/schedule/PlanDisplay';
@@ -16,11 +13,10 @@ import { Plan, SelectionState } from '@/types/schedule';
 import { getPlan } from '@/lib/api';
 
 export default function HomePage() {
-  const _0x2b3c=(_0xa)=>[true,false,{},null][_0xa];
-  const [loading, setLoading] = useState(_0x2b3c(0));
-  const [isMaintenanceMode, setIsMaintenanceMode] = useState(_0x2b3c(1));
-  const [selection, setSelection] = useState<Partial<SelectionState>>(_0x2b3c(2));
-  const [plan, setPlan] = useState<Plan | null>(_0x2b3c(3));
+  const [loading, setLoading] = useState(true);
+  const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
+  const [selection, setSelection] = useState<Partial<SelectionState>>({});
+  const [plan, setPlan] = useState<Plan | null>(null);
   const [currentWeek, setCurrentWeek] = useState(() => {
     const now = new Date();
     return getWeekRange(shouldShowNextWeek() ? new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000) : now);
