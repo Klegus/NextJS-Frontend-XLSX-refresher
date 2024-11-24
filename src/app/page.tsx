@@ -126,9 +126,9 @@ export default function HomePage() {
         </div>
 
         {/* Main Content Grid */}
-        <div className={`grid ${plan ? 'grid-cols-1 lg:grid-cols-12' : 'grid-cols-1'} gap-8 relative overflow-hidden`}>
+        <div className={`flex flex-col lg:flex-row gap-8 relative overflow-hidden`}>
           {/* Selection Controls */}
-          <div className={`${plan ? 'lg:col-span-3' : 'mx-auto'} w-full max-w-md transition-all duration-500`}>
+          <div className={`${plan ? 'lg:w-1/4 xl:w-1/5' : 'mx-auto'} w-full max-w-md transition-all duration-500`}>
             <div className="bg-white rounded-lg shadow-lg p-6 w-full">
               <SelectionControls
                 onSelectionChange={handleSelectionChange}
@@ -138,7 +138,7 @@ export default function HomePage() {
           </div>
 
           {/* Schedule Display */}
-          <div className={`${plan ? 'lg:col-span-9' : 'hidden'} transition-all duration-500`}>
+          <div className={`${plan ? 'lg:flex-1' : 'hidden'} transition-all duration-500`}>
             {loading ? (
               <LoadingSpinner />
             ) : (
