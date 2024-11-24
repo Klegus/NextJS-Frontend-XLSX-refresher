@@ -126,9 +126,13 @@ export default function HomePage() {
         </div>
 
         {/* Main Content Grid */}
-        <div className={`flex flex-col lg:flex-row gap-8 relative overflow-visible`}>
+        <div className={`flex flex-col md:flex-row gap-8 relative overflow-visible`}>
           {/* Selection Controls */}
-          <div className={`${plan ? 'lg:absolute lg:-left-64 lg:w-64 selection-controls-enter' : 'mx-auto'} w-full max-w-md transition-all duration-500 px-4 lg:px-0`}>
+          <div className={`${
+            plan ? 
+            'md:w-80 lg:absolute lg:-left-64 lg:w-64 selection-controls-enter' : 
+            'mx-auto'
+          } w-full max-w-md transition-all duration-500 px-4 lg:px-0`}>
             <div className="bg-white rounded-lg shadow-lg p-6 w-full">
               <SelectionControls
                 onSelectionChange={handleSelectionChange}
@@ -138,7 +142,7 @@ export default function HomePage() {
           </div>
 
           {/* Schedule Display */}
-          <div className={`${plan ? 'flex-1 px-4' : 'hidden'} transition-all duration-500`}>
+          <div className={`${plan ? 'md:flex-1 px-4' : 'hidden'} transition-all duration-500`}>
             {loading ? (
               <LoadingSpinner />
             ) : (
