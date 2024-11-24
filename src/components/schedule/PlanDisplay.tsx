@@ -122,8 +122,8 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                 el.classList.remove('current-time-highlight');
             });
 
-            // Skip weekends for regular studies
-            if (plan.category === 'st' && (currentDay === 0 || currentDay === 6)) {
+            // Skip weekends regardless of category
+            if (currentDay === 0 || currentDay === 6) {
                 onTimeSlotChange?.("Weekend! Czas wolny od zajęć 🎉", null);
                 return;
             }
@@ -135,7 +135,11 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
             rows.forEach((row, i) => {
                 if (i === 0) return; // Skip header row
 
-                const timeCell = row.querySelector('td:first-child');
+                const cells = row.querySelectorAll('td');
+                if (cells.length === 0) return;
+
+                // Skip first column (time column)
+                const timeCell = cells[0];
                 if (!timeCell) return;
 
                 const timeParts = timeCell.textContent?.split('-') || [];
