@@ -73,11 +73,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                     return;
                 }
 
-                // Make text before first dash bold, except for time column
-                const cellContent = index === 0 ? cell.innerHTML : cell.innerHTML.replace(
-                    /^([^-]+?)(?=-)/,
-                    '<strong class="text-wspia-gray">$1</strong>'
-                );
+                const cellContent = cell.innerHTML;
                 if (cellContent && cellContent.trim() !== '') {
                     const date = new Date(weekRange.start);
                     date.setDate(weekRange.start.getDate() + (index - 1));
@@ -103,9 +99,33 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
     };
 
     useEffect(() => {
-        if (plan.category === 'st' && currentWeek && filterEnabled) {
-            const filtered = filterPlanForCurrentWeek(plan.html, currentWeek);
-            setFilteredHtml(filtered);
+        // Process HTML to make subject names bold
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(plan.html, 'text/html');
+        const table = doc.querySelector('table');
+        
+        if (table) {
+            const rows = table.querySelectorAll('tr');
+            rows.forEach((row, rowIndex) => {
+                const cells = row.querySelectorAll('td');
+                cells.forEach((cell, cellIndex) => {
+                    if (cellIndex !== 0) { // Skip first column (time)
+                        cell.innerHTML = cell.innerHTML.replace(
+                            /^([^-]+?)(?=-)/,
+                            '<strong class="text-wspia-gray">$1</strong>'
+                        );
+                    }
+                });
+            });
+            
+            const processedHtml = table.outerHTML;
+            
+            if (plan.category === 'st' && currentWeek && filterEnabled) {
+                const filtered = filterPlanForCurrentWeek(processedHtml, currentWeek);
+                setFilteredHtml(filtered);
+            } else {
+                setFilteredHtml(processedHtml);
+            }
         } else {
             setFilteredHtml(plan.html);
         }
