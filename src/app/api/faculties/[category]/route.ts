@@ -6,13 +6,18 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://172.20.0.20';
 
 export async function GET(
   request: NextRequest,
-  context: { params: { category: string } }
+  { params }: { params: { category: string } }
 ) {
   try {
-    const category = await Promise.resolve(context.params.category);
-    
+    if (!params?.category) {
+      return NextResponse.json(
+        { error: 'Category parameter is required' },
+        { status: 400 }
+      );
+    }
+
     const response = await fetch(
-      `${API_URL}/api/faculties/${encodeURIComponent(category)}`
+      `${API_URL}/api/faculties/${encodeURIComponent(params.category)}`
     );
     
     if (!response.ok) {
