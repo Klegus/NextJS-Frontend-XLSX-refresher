@@ -110,7 +110,7 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="max-w-7xl mx-4 lg:mx-8 py-12">
+      <div className="max-w-[1400px] mx-auto py-12 relative">
         {/* Logo and Header */}
         <div className="text-center mb-12">
           <div className="w-32 h-32 mx-auto mb-6 bg-white rounded-full shadow-lg overflow-hidden flex items-center justify-center">
