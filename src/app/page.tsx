@@ -128,7 +128,7 @@ export default function HomePage() {
         {/* Main Content Grid */}
         <div className={`flex flex-col lg:flex-row gap-8 relative overflow-visible`}>
           {/* Selection Controls */}
-          <div className={`${plan ? 'lg:absolute lg:-left-64 lg:w-64' : 'mx-auto'} w-full max-w-md transition-all duration-500 px-4 lg:px-0`}>
+          <div className={`${plan ? 'lg:absolute lg:-left-64 lg:w-64 selection-controls-enter' : 'mx-auto'} w-full max-w-md transition-all duration-500 px-4 lg:px-0`}>
             <div className="bg-white rounded-lg shadow-lg p-6 w-full">
               <SelectionControls
                 onSelectionChange={handleSelectionChange}

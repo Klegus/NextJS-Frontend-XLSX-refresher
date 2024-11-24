@@ -387,6 +387,36 @@ select:focus {
   animation: slideFromRight 0.5s ease-in-out forwards;
 }
 
+@keyframes slideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOutToLeft {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+}
+
+.selection-controls-enter {
+  animation: slideInFromLeft 0.5s ease-out forwards;
+}
+
+.selection-controls-exit {
+  animation: slideOutToLeft 0.5s ease-in forwards;
+}
+
 .selection-container {
   max-width: 500px;
   margin: 0 auto;
