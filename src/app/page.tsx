@@ -110,7 +110,7 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="max-w-7xl mx-auto px-4 py-12">
+      <div className="max-w-7xl mx-auto py-12">
         {/* Logo and Header */}
         <div className="text-center mb-12">
           <div className="w-32 h-32 mx-auto mb-6 bg-white rounded-full shadow-lg overflow-hidden flex items-center justify-center">
@@ -126,9 +126,9 @@ export default function HomePage() {
         </div>
 
         {/* Main Content Grid */}
-        <div className={`flex flex-col lg:flex-row gap-8 relative overflow-hidden`}>
+        <div className={`flex flex-col lg:flex-row gap-8 relative overflow-visible`}>
           {/* Selection Controls */}
-          <div className={`${plan ? 'lg:w-1/4 xl:w-1/5' : 'mx-auto'} w-full max-w-md transition-all duration-500`}>
+          <div className={`${plan ? 'lg:absolute lg:-left-64 lg:w-64' : 'mx-auto'} w-full max-w-md transition-all duration-500 px-4 lg:px-0`}>
             <div className="bg-white rounded-lg shadow-lg p-6 w-full">
               <SelectionControls
                 onSelectionChange={handleSelectionChange}
@@ -138,7 +138,7 @@ export default function HomePage() {
           </div>
 
           {/* Schedule Display */}
-          <div className={`${plan ? 'lg:flex-1' : 'hidden'} transition-all duration-500`}>
+          <div className={`${plan ? 'flex-1 px-4' : 'hidden'} transition-all duration-500`}>
             {loading ? (
               <LoadingSpinner />
             ) : (
