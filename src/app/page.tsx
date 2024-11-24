@@ -126,14 +126,12 @@ export default function HomePage() {
         </div>
 
         {/* Main Content Grid */}
-        <div className="flex flex-col lg:flex-row gap-8 relative overflow-visible">
+        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-8 max-w-full relative">
           {/* Selection Controls */}
           <div className={`${
-            plan ? 
-            'w-full lg:w-[300px] lg:absolute lg:-left-[320px] selection-controls-enter' : 
-            ''
-          } transition-all duration-500 lg:px-0 px-4`}>
-            <div className="bg-white rounded-lg shadow-lg p-6 w-full">
+            plan ? 'block' : ''
+          } transition-all duration-500 px-4 lg:px-0`}>
+            <div className="bg-white rounded-lg shadow-lg p-6 w-full sticky top-4">
               <SelectionControls
                 onSelectionChange={handleSelectionChange}
                 initialSelection={selection}
@@ -142,7 +140,7 @@ export default function HomePage() {
           </div>
 
           {/* Schedule Display */}
-          <div className={`${plan ? 'w-full lg:flex-1 lg:px-8 px-4' : 'hidden'} transition-all duration-500`}>
+          <div className={`${plan ? 'block px-4 lg:px-8' : 'hidden'} transition-all duration-500`}>
             {loading ? (
               <LoadingSpinner />
             ) : (
