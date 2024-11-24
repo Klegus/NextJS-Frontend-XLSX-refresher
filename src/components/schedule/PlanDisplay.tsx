@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Switch } from '@headlessui/react';
+import { Toggle } from '@/components/ui/Toggle';
 import { Plan } from '@/types/schedule';
 import { timeSinceUpdate, convertTimeToMinutes } from '@/lib/utils';
 
@@ -231,20 +231,11 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                     </div>
                     {plan.category === 'st' && (
                         <div className="flex items-center gap-2">
-                            <Switch
+                            <Toggle
                                 checked={filterEnabled}
                                 onChange={handleFilterToggle}
-                                className={`${
-                                    filterEnabled ? 'bg-[#e31e24]' : 'bg-gray-100'
-                                } relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-wspia-red/20 focus:ring-offset-2 border-2 border-gray-400 shadow-sm hover:border-gray-500`}
-                            >
-                                <span className="sr-only">Filtruj plan</span>
-                                <span
-                                    className={`${
-                                        filterEnabled ? 'translate-x-6' : 'translate-x-1'
-                                    } inline-block h-5 w-5 transform rounded-full bg-white transition-transform duration-200 ease-in-out shadow-md border-2 border-gray-400`}
-                                />
-                            </Switch>
+                                label="Filtruj plan"
+                            />
                             <span className="text-sm font-medium text-gray-600 whitespace-nowrap">
                                 Filtruj plan
                             </span>
