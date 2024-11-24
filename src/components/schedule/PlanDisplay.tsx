@@ -111,8 +111,8 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                 cells.forEach((cell, cellIndex) => {
                     if (cellIndex !== 0) { // Skip first column (time)
                         cell.innerHTML = cell.innerHTML.replace(
-                            /^([^-]+?)(?=-)/,
-                            '<strong class="text-wspia-gray">$1</strong>'
+                            /^([^-]+?)(?=-)(-)/,
+                            '<strong class="text-wspia-gray">$1</strong><br/>'
                         );
                     }
                 });
