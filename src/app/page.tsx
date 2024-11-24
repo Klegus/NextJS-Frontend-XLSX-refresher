@@ -42,14 +42,6 @@ export default function HomePage() {
     checkMaintenanceStatus();
   }, []);
 
-  if (loading) {
-    return <LoadingSpinner />;
-  }
-
-  if (isMaintenanceMode) {
-    return <MaintenancePage />;
-  }
-
   useEffect(() => {
     // Load saved selection from localStorage
     const saved = localStorage.getItem('schedule-selection');
@@ -84,6 +76,14 @@ export default function HomePage() {
 
     loadPlan();
   }, [selection.plan, selection.group]);
+
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  if (isMaintenanceMode) {
+    return <MaintenancePage />;
+  }
 
   const handleSelectionChange = (newSelection: Partial<SelectionState>) => {
     setSelection(newSelection);
