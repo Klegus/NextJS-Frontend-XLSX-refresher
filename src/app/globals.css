@@ -532,27 +532,9 @@ select:focus {
 .switch {
   position: relative;
   display: inline-block;
-  width: 48px;
-  height: 28px;
-  margin: 0 6px;
-}
-
-@media (max-width: 640px) {
-  .switch {
-    width: 40px;
-    height: 24px;
-  }
-  
-  .switch .slider:before {
-    width: 18px;
-    height: 18px;
-    left: 3px;
-    bottom: 3px;
-  }
-  
-  .switch input:checked + .slider:before {
-    transform: translateX(16px);
-  }
+  width: 36px;
+  height: 20px;
+  margin: 0 4px;
 }
 
 .switch input {
@@ -569,29 +551,28 @@ select:focus {
   right: 0;
   bottom: 0;
   background-color: #d1d5db;
-  transition: 0.4s;
-  border-radius: 34px;
+  transition: 0.3s;
+  border-radius: 20px;
 }
 
 .slider:before {
   position: absolute;
   content: "";
-  height: 26px;
-  width: 26px;
-  left: 4px;
-  bottom: 4px;
+  height: 16px;
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
   background-color: white;
-  transition: 0.4s;
+  transition: 0.3s;
   border-radius: 50%;
 }
 
-/* Red background when checked */
 input:checked + .slider {
-  background-color: red;
+  background-color: var(--wspia-red);
 }
 
 input:checked + .slider:before {
-  transform: translateX(26px);
+  transform: translateX(16px);
 }
 
 /* Week navigation buttons */
