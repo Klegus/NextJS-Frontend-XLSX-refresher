@@ -126,11 +126,13 @@ export default function HomePage() {
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-8 max-w-full relative">
+        <div className={`${
+          plan 
+            ? "grid grid-cols-1 lg:grid-cols-[300px_1fr]" 
+            : "flex justify-center"
+        } gap-8 max-w-full relative`}>
           {/* Selection Controls */}
-          <div className={`${
-            plan ? 'block' : ''
-          } transition-all duration-500 px-4 lg:px-0`}>
+          <div className="transition-all duration-500 px-4 lg:px-0">
             <div className="bg-white rounded-lg shadow-lg p-6 w-full sticky top-4">
               <SelectionControls
                 onSelectionChange={handleSelectionChange}
