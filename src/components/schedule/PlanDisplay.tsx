@@ -11,6 +11,11 @@ interface PlanDisplayProps {
   onTimeSlotChange?: (current: string | null, next: string | null) => void;
 }
 
+interface PlanStatus {
+  isOnline: boolean;
+  lastChecked: Date;
+}
+
 const FILTER_TOGGLE_KEY = 'planFilterEnabled';
 
 export const PlanDisplay: React.FC<PlanDisplayProps> = ({
@@ -20,6 +25,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [filteredHtml, setFilteredHtml] = useState(plan.html);
+    const [status, setStatus] = useState<PlanStatus>({ isOnline: true, lastChecked: new Date() });
     const [filterEnabled, setFilterEnabled] = useState(() => {
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem(FILTER_TOGGLE_KEY);
@@ -166,9 +172,33 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
         return () => clearInterval(interval);
     }, [plan, currentWeek, onTimeSlotChange]);
 
+    useEffect(() => {
+        const checkStatus = async () => {
+            try {
+                const response = await fetch(`/api/plans/${plan.category}/${plan.id}/status`);
+                setStatus({
+                    isOnline: response.ok,
+                    lastChecked: new Date()
+                });
+            } catch (error) {
+                setStatus(prev => ({
+                    isOnline: false,
+                    lastChecked: new Date()
+                }));
+            }
+        };
+
+        checkStatus();
+        const interval = setInterval(checkStatus, 10000);
+        return () => clearInterval(interval);
+    }, [plan.category, plan.id]);
+
     return (
         <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${status.isOnline ? 'bg-green-500' : 'bg-red-500'}`} 
+                         title={`Status: ${status.isOnline ? 'Online' : 'Offline'}`} />
                 <div className="flex items-center gap-4">
                     <h2 className="text-2xl font-bold text-wspia-gray">Plan zajęć</h2>
                     {plan.category === 'st' && (
