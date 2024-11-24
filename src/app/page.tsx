@@ -130,7 +130,7 @@ export default function HomePage() {
           {/* Selection Controls */}
           <div className={`${
             plan ? 
-            'w-full lg:w-[300px] selection-controls-enter' : 
+            'w-full lg:w-[300px] lg:absolute lg:-left-[320px] selection-controls-enter' : 
             ''
           } transition-all duration-500 lg:px-0 px-4`}>
             <div className="bg-white rounded-lg shadow-lg p-6 w-full">
