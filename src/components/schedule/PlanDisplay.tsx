@@ -200,38 +200,38 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
 
     return (
         <div className="bg-white rounded-lg shadow-lg p-6">
-            <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-2">
-                    <div 
-                        className={`w-2 h-2 rounded-full ${status.isOnline ? 'bg-green-500' : 'bg-red-500'}`} 
-                        title={`Status: ${status.isOnline ? 'Online' : 'Offline'}`} 
-                    />
-                    <div className="flex items-center gap-4">
-                        <h2 className="text-2xl font-bold text-wspia-gray">Plan zajęć</h2>
-                        {plan.category === 'st' && (
-                            <div className="flex items-center gap-3">
-                                <Switch
-                                    checked={filterEnabled}
-                                    onChange={handleFilterToggle}
-                                    className={`${
-                                        filterEnabled ? 'bg-wspia-red' : 'bg-gray-100'
-                                    } relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-wspia-red/20 focus:ring-offset-2 border border-gray-300 shadow-sm`}
-                                >
-                                    <span className="sr-only">Filtruj plan</span>
-                                    <span
-                                        className={`${
-                                            filterEnabled ? 'translate-x-6' : 'translate-x-1'
-                                        } inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ease-in-out shadow-md border border-gray-200`}
-                                    />
-                                </Switch>
-                                <span className="text-sm font-medium text-gray-600">
-                                    Filtruj plan
-                                </span>
-                            </div>
-                        )}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                    <div className="flex items-center gap-2">
+                        <div 
+                            className={`w-2 h-2 rounded-full ${status.isOnline ? 'bg-green-500' : 'bg-red-500'}`} 
+                            title={`Status: ${status.isOnline ? 'Online' : 'Offline'}`} 
+                        />
+                        <h2 className="text-xl sm:text-2xl font-bold text-wspia-gray">Plan zajęć</h2>
                     </div>
+                    {plan.category === 'st' && (
+                        <div className="flex items-center gap-2">
+                            <Switch
+                                checked={filterEnabled}
+                                onChange={handleFilterToggle}
+                                className={`${
+                                    filterEnabled ? 'bg-wspia-red' : 'bg-gray-100'
+                                } relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-wspia-red/20 focus:ring-offset-2 border border-gray-300 shadow-sm`}
+                            >
+                                <span className="sr-only">Filtruj plan</span>
+                                <span
+                                    className={`${
+                                        filterEnabled ? 'translate-x-6' : 'translate-x-1'
+                                    } inline-block h-5 w-5 transform rounded-full bg-white transition-transform duration-200 ease-in-out shadow-md border border-gray-200`}
+                                />
+                            </Switch>
+                            <span className="text-sm font-medium text-gray-600 whitespace-nowrap">
+                                Filtruj plan
+                            </span>
+                        </div>
+                    )}
                 </div>
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-gray-500 whitespace-nowrap">
                     Ostatnia aktualizacja: {timeSinceUpdate(plan.timestamp)}
                 </span>
             </div>
