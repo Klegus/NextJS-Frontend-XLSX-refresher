@@ -14,7 +14,8 @@ export const Toggle: React.FC<ToggleProps> = ({ checked, onChange, label }) => {
             className={`
                 relative inline-flex h-6 w-11 items-center rounded-full
                 transition-colors duration-200 ease-in-out
-                focus:outline-none focus:ring-2 focus:ring-wspia-red/20 focus:ring-offset-2
+                outline outline-2 outline-wspia-red/60 hover:outline-wspia-red
+                focus:outline-none focus:ring-2 focus:ring-wspia-red focus:ring-offset-2
                 ${checked ? 'bg-wspia-red' : 'bg-wspia-red/20'}
                 border-2 border-wspia-red/40 hover:border-wspia-red/60
             `}
