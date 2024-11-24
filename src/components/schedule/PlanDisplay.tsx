@@ -236,13 +236,13 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                                 onChange={handleFilterToggle}
                                 className={`${
                                     filterEnabled ? 'bg-[#e31e24]' : 'bg-gray-100'
-                                } relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-wspia-red/20 focus:ring-offset-2 border border-gray-300 shadow-sm`}
+                                } relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-wspia-red/20 focus:ring-offset-2 border-2 border-gray-400 shadow-sm hover:border-gray-500`}
                             >
                                 <span className="sr-only">Filtruj plan</span>
                                 <span
                                     className={`${
                                         filterEnabled ? 'translate-x-6' : 'translate-x-1'
-                                    } inline-block h-5 w-5 transform rounded-full bg-white transition-transform duration-200 ease-in-out shadow-md border border-gray-200`}
+                                    } inline-block h-5 w-5 transform rounded-full bg-white transition-transform duration-200 ease-in-out shadow-md border-2 border-gray-400`}
                                 />
                             </Switch>
                             <span className="text-sm font-medium text-gray-600 whitespace-nowrap">
