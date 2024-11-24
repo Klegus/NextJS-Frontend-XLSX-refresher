@@ -6,8 +6,8 @@ export async function GET(
   { params }: { params: { collection: string; group: string } }
 ) {
   try {
-    const collection = await params.collection;
-    const group = await params.group;
+    // Ensure params are properly resolved before using
+    const { collection, group } = params;
     
     const response = await fetch(
       `${API_URL}/api/plan/${encodeURIComponent(collection)}/${encodeURIComponent(group)}`
