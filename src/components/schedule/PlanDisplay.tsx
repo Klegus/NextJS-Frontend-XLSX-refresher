@@ -175,7 +175,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
     useEffect(() => {
         const checkStatus = async () => {
             try {
-                const response = await fetch(`/api/plans/${plan.category}/${plan.id}/status`);
+                const response = await fetch('/api/status');
                 setStatus({
                     isOnline: response.ok,
                     lastChecked: new Date()
