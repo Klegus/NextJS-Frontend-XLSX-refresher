@@ -197,12 +197,14 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
         <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${status.isOnline ? 'bg-green-500' : 'bg-red-500'}`} 
-                         title={`Status: ${status.isOnline ? 'Online' : 'Offline'}`} />
-                <div className="flex items-center gap-4">
-                    <h2 className="text-2xl font-bold text-wspia-gray">Plan zajęć</h2>
-                    {plan.category === 'st' && (
-                        <div className="flex items-center gap-2">
+                    <div 
+                        className={`w-2 h-2 rounded-full ${status.isOnline ? 'bg-green-500' : 'bg-red-500'}`} 
+                        title={`Status: ${status.isOnline ? 'Online' : 'Offline'}`} 
+                    />
+                    <div className="flex items-center gap-4">
+                        <h2 className="text-2xl font-bold text-wspia-gray">Plan zajęć</h2>
+                        {plan.category === 'st' && (
+                            <div className="flex items-center gap-2">
                             <label className="relative inline-flex items-center cursor-pointer">
                                 <input
                                     type="checkbox"
@@ -217,6 +219,9 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                             </label>
                         </div>
                     )}
+                            </div>
+                        )}
+                    </div>
                 </div>
                 <span className="text-sm text-gray-500">
                     Ostatnia aktualizacja: {timeSinceUpdate(plan.timestamp)}
