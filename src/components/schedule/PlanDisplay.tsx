@@ -215,7 +215,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                                 checked={filterEnabled}
                                 onChange={handleFilterToggle}
                                 className={`${
-                                    filterEnabled ? 'bg-wspia-red' : 'bg-gray-100'
+                                    filterEnabled ? 'bg-gray-100' : 'bg-wspia-red'
                                 } relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-wspia-red/20 focus:ring-offset-2 border border-gray-300 shadow-sm`}
                             >
                                 <span className="sr-only">Filtruj plan</span>
