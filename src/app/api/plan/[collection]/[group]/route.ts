@@ -10,7 +10,7 @@ export async function GET(
     const group = await params.group;
     
     const response = await fetch(
-      `${API_URL}/api/plan/${collection}/${group}`
+      `${API_URL}/api/plan/${encodeURIComponent(collection)}/${encodeURIComponent(group)}`
     );
     const data = await response.json();
     return NextResponse.json(data);
