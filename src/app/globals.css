@@ -155,6 +155,21 @@ body {
   #plan-content td {
     min-width: 80px; /* Increased minimum width */
   }
+  .switch {
+    width: 40px !important;
+    height: 22px !important;
+  }
+  
+  .switch .slider:before {
+    height: 16px !important;
+    width: 16px !important;
+    left: 3px !important;
+    bottom: 3px !important;
+  }
+  
+  .switch input:checked + .slider:before {
+    transform: translateX(18px) !important;
+  }
 }
 
 /* Larger phones (iPhone Pro Max etc) */
@@ -204,6 +219,21 @@ body {
   
   #plan-content td:first-child {
     min-width: 50px;
+  }
+  .switch {
+    width: 36px !important;
+    height: 20px !important;
+  }
+  
+  .switch .slider:before {
+    height: 14px !important;
+    width: 14px !important;
+    left: 3px !important;
+    bottom: 3px !important;
+  }
+  
+  .switch input:checked + .slider:before {
+    transform: translateX(16px) !important;
   }
 }
 #countdown {
@@ -491,56 +521,67 @@ select:focus {
   margin-top: 1rem;
 }
 .switch {
-  position: relative;
-  display: inline-block;
-  width: 48px;
-  height: 24px;
-  margin: 0 4px;
+  position: relative !important;
+  display: inline-block !important;
+  width: 46px !important;
+  height: 24px !important;
+  margin: 0 8px !important;
+  vertical-align: middle !important;
+  flex-shrink: 0 !important;
 }
 
 .switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #d1d5db;
-  transition: all 0.3s ease;
-  border-radius: 24px;
+.switch .slider {
+  position: absolute !important;
+  cursor: pointer !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background-color: #d1d5db !important;
+  transition: 0.2s !important;
+  border-radius: 24px !important;
 }
 
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 20px;
-  width: 20px;
-  left: 2px;
-  bottom: 2px;
-  background-color: white;
-  transition: all 0.3s ease;
-  border-radius: 50%;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+.switch .slider:before {
+  position: absolute !important;
+  content: "" !important;
+  height: 18px !important;
+  width: 18px !important;
+  left: 3px !important;
+  bottom: 3px !important;
+  background-color: white !important;
+  transition: 0.2s !important;
+  border-radius: 50% !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
 }
 
-input:checked + .slider {
-  background-color: var(--wspia-red);
+.switch input:checked + .slider {
+  background-color: var(--wspia-red) !important;
 }
 
-input:checked + .slider:before {
-  transform: translateX(24px);
+.switch input:checked + .slider:before {
+  transform: translateX(22px) !important;
 }
+
 
 input:focus + .slider {
-  box-shadow: 0 0 1px var(--wspia-red);
+  box-shadow: 0 0 2px var(--wspia-red);
+}
+.slider:hover {
+  background-color: #9ca3af;
 }
 
+input:checked + .slider:hover {
+  background-color: #cd1b20;
+}
 /* Week navigation buttons */
 #prevWeekBtn,
 #nextWeekBtn {
