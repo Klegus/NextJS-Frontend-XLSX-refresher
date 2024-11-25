@@ -147,9 +147,6 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
             const currentDay = now.getDay();
             const currentTime = now.getHours() * 60 + now.getMinutes();
 
-            console.log('Current day:', currentDay);
-            console.log('Current time (in minutes):', currentTime);
-
             const table = containerRef.current.querySelector('table');
             if (!table) return;
 
