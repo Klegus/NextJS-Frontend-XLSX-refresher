@@ -220,8 +220,9 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                     setNotificationsEnabled(true);
                     localStorage.setItem(`notifications-${collectionName}`, 'true');
                 }
-            } catch (error) {
-                console.error('Failed to enable notifications:', error);
+            } catch (error: unknown) {
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                console.error('Failed to enable notifications:', errorMessage);
             }
         } else {
             // Wyłącz powiadomienia
