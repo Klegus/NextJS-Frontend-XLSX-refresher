@@ -205,17 +205,18 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                         applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
                     });
                     
+                    const collectionName = plan.category;
                     await fetch('/api/notifications/subscribe', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             subscription,
-                            planId: plan.id
+                            collectionName
                         })
                     });
                     
                     setNotificationsEnabled(true);
-                    localStorage.setItem(`notifications-${plan.id}`, 'true');
+                    localStorage.setItem(`notifications-${collectionName}`, 'true');
                 }
             } catch (error) {
                 console.error('Failed to enable notifications:', error);
@@ -230,9 +231,9 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
 
     // Sprawdź stan powiadomień przy montowaniu
     useEffect(() => {
-        const notificationState = localStorage.getItem(`notifications-${plan.id}`);
+        const notificationState = localStorage.getItem(`notifications-${plan.category}`);
         setNotificationsEnabled(notificationState === 'true');
-    }, [plan.id]);
+    }, [plan.category]);
 
     const currentHighlightRef = useRef<HTMLTableCellElement | null>(null);
 

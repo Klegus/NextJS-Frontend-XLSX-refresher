@@ -6,7 +6,7 @@ self.addEventListener('push', function(event) {
         icon: '/favicon.ico',
         badge: '/favicon.ico',
         data: {
-            url: data.url
+            url: `/plans/${data.collectionName}`
         },
         vibrate: [200, 100, 200],
         tag: 'plan-update',
