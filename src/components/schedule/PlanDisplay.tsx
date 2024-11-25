@@ -203,16 +203,14 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                     });
                     const dayCell = row.cells[currentDay];
                     if (dayCell) {
-                        requestAnimationFrame(() => {
-                            dayCell.classList.add('current-time-highlight');
-                            currentSlot = dayCell.textContent || null;
+                        dayCell.className = 'current-time-highlight';
+                        currentSlot = dayCell.textContent || null;
                         
-                            // Scroll to the highlighted cell with smooth animation
-                            dayCell.scrollIntoView({
-                                behavior: 'smooth',
-                                block: 'center',
-                                inline: 'center'
-                            });
+                        // Scroll to the highlighted cell with smooth animation
+                        dayCell.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'center',
+                            inline: 'center'
                         });
                         found = true;
                         break;
@@ -282,7 +280,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
             <div className="overflow-x-auto">
                 <div
                     ref={containerRef}
-                    className="relative min-w-[800px] lg:min-w-0 [&_.current-time-highlight]:bg-wspia-blue/10 [&_.current-time-highlight]:text-wspia-blue [&_.current-time-highlight]:animate-pulse"
+                    className="relative min-w-[800px] lg:min-w-0"
                     id="plan-content"
                     dangerouslySetInnerHTML={{ __html: filteredHtml }}
                 />
