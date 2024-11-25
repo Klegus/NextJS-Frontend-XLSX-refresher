@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Toggle } from '@/components/ui/Toggle';
 import { Plan } from '@/types/schedule';
 import { timeSinceUpdate, convertTimeToMinutes } from '@/lib/utils';
@@ -36,6 +36,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
         return true;
     });
 
+    const [notificationsEnabled, setNotificationsEnabled] = useState(false);
     const [mergeEnabled, setMergeEnabled] = useState(() => {
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem(MERGE_TOGGLE_KEY);
@@ -193,6 +194,46 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
         localStorage.setItem(MERGE_TOGGLE_KEY, String(newValue));
     };
 
+    const handleNotificationToggle = useCallback(async () => {
+        if (!notificationsEnabled) {
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    const registration = await navigator.serviceWorker.register('/notification-worker.js');
+                    const subscription = await registration.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+                    });
+                    
+                    await fetch('/api/notifications/subscribe', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            subscription,
+                            planId: plan.id
+                        })
+                    });
+                    
+                    setNotificationsEnabled(true);
+                    localStorage.setItem(`notifications-${plan.id}`, 'true');
+                }
+            } catch (error) {
+                console.error('Failed to enable notifications:', error);
+            }
+        } else {
+            // Wyłącz powiadomienia
+            setNotificationsEnabled(false);
+            localStorage.removeItem(`notifications-${plan.id}`);
+            // TODO: Dodaj endpoint do wypisywania z subskrypcji
+        }
+    }, [notificationsEnabled, plan.id]);
+
+    // Sprawdź stan powiadomień przy montowaniu
+    useEffect(() => {
+        const notificationState = localStorage.getItem(`notifications-${plan.id}`);
+        setNotificationsEnabled(notificationState === 'true');
+    }, [plan.id]);
+
     const currentHighlightRef = useRef<HTMLTableCellElement | null>(null);
 
     useEffect(() => {
@@ -333,6 +374,16 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                             />
                             <span className="text-sm font-medium text-gray-600 whitespace-nowrap">
                                 Scal komórki
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Toggle
+                                checked={notificationsEnabled}
+                                onChange={handleNotificationToggle}
+                                label="Powiadomienia o zmianach"
+                            />
+                            <span className="text-sm font-medium text-gray-600 whitespace-nowrap">
+                                Powiadomienia
                             </span>
                         </div>
                     </div>
