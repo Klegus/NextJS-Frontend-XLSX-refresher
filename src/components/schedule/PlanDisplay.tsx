@@ -165,8 +165,11 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
             // Find current time slot
             const rows = table.querySelectorAll('tr');
             let currentSlot = null;
+            let found = false;
 
-            rows.forEach((row, i) => {
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i];
+                if (found) break;
                 if (i === 0) return; // Skip header row
 
                 const cells = row.querySelectorAll('td');
@@ -207,9 +210,11 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                             block: 'center',
                             inline: 'center'
                         });
+                        found = true;
+                        break;
                     }
                 }
-            });
+            }
 
             onTimeSlotChange?.(currentSlot, null);
         };
