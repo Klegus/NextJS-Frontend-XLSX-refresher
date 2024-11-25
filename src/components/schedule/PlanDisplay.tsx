@@ -184,6 +184,13 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                     if (dayCell) {
                         dayCell.classList.add('current-time-highlight');
                         currentSlot = dayCell.textContent || null;
+                    
+                        // Scroll to the highlighted cell with smooth animation
+                        dayCell.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'center',
+                            inline: 'center'
+                        });
                     }
                 }
             });
