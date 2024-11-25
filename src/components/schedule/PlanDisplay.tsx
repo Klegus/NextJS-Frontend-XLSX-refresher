@@ -137,6 +137,8 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
         localStorage.setItem(FILTER_TOGGLE_KEY, String(newValue));
     };
 
+    const currentHighlightRef = useRef<HTMLTableCellElement | null>(null);
+
     useEffect(() => {
         const highlightCurrentTimeSlot = () => {
             if (!containerRef.current) return;
@@ -145,18 +147,11 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
             const currentDay = now.getDay();
             const currentTime = now.getHours() * 60 + now.getMinutes();
 
-            console.log('Current day:', currentDay); // 1-5 dla pon-pt
+            console.log('Current day:', currentDay);
             console.log('Current time (in minutes):', currentTime);
 
             const table = containerRef.current.querySelector('table');
             if (!table) return;
-
-            // Remove previous highlights
-            const previousHighlights = table.querySelectorAll('.current-time-highlight');
-            previousHighlights.forEach(el => {
-                el.classList.remove('current-time-highlight');
-                el.classList.remove('animate-pulse');
-            });
 
             // Skip weekends regardless of category
             if (currentDay === 0 || currentDay === 6) {
@@ -164,20 +159,20 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                 return;
             }
 
+            // Remove highlight from previous cell
+            if (currentHighlightRef.current) {
+                currentHighlightRef.current.classList.remove('current-time-highlight');
+                currentHighlightRef.current = null;
+            }
+
             // Find current time slot
             const rows = table.querySelectorAll('tr');
             let currentSlot = null;
-            let found = false;
 
-            for (let i = 0; i < rows.length; i++) {
-                const row = rows[i];
-                if (found) break;
-                if (i === 0) continue; // Skip header row
-
-                const cells = row.querySelectorAll('td');
+            for (let i = 1; i < rows.length; i++) {
+                const cells = rows[i].querySelectorAll('td');
                 if (cells.length === 0) continue;
 
-                // Skip first column (time column)
                 const timeCell = cells[0];
                 if (!timeCell) continue;
 
@@ -199,20 +194,20 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                     console.log('Found matching time slot!', {
                         row: i,
                         timeSlot: timeCell.textContent,
-                        dayCell: row.cells[currentDay]?.textContent
+                        dayCell: rows[i].cells[currentDay]?.textContent
                     });
-                    const dayCell = row.cells[currentDay];
+                    
+                    const dayCell = rows[i].cells[currentDay];
                     if (dayCell) {
-                        dayCell.className = 'current-time-highlight';
+                        dayCell.classList.add('current-time-highlight');
+                        currentHighlightRef.current = dayCell;
                         currentSlot = dayCell.textContent || null;
                         
-                        // Scroll to the highlighted cell with smooth animation
                         dayCell.scrollIntoView({
                             behavior: 'smooth',
                             block: 'center',
                             inline: 'center'
                         });
-                        found = true;
                         break;
                     }
                 }
@@ -221,10 +216,20 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
             onTimeSlotChange?.(currentSlot, null);
         };
 
+        // Initial highlight
         highlightCurrentTimeSlot();
+        
+        // Set up interval for updates
         const interval = setInterval(highlightCurrentTimeSlot, 60000);
 
-        return () => clearInterval(interval);
+        // Cleanup function
+        return () => {
+            clearInterval(interval);
+            if (currentHighlightRef.current) {
+                currentHighlightRef.current.classList.remove('current-time-highlight');
+                currentHighlightRef.current = null;
+            }
+        };
     }, [plan, currentWeek, onTimeSlotChange]);
 
     useEffect(() => {
