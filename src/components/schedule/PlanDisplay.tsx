@@ -228,7 +228,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
             // Wyłącz powiadomienia
             setNotificationsEnabled(false);
             const planId = plan.id.split('-')[0];
-            localStorage.removeItem(`notifications-${planId}`);
+            localStorage.setItem(`notifications-${planId}`, 'false');
             try {
                 const registration = await navigator.serviceWorker.ready;
                 const subscription = await registration.pushManager.getSubscription();
