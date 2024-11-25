@@ -312,8 +312,8 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                         />
                         <h2 className="text-xl sm:text-2xl font-bold text-wspia-gray">Plan zajęć</h2>
                     </div>
-                    {plan.category === 'st' && (
-                        <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4">
+                        {plan.category === 'st' && (
                             <div className="flex items-center gap-2">
                                 <Toggle
                                     checked={filterEnabled}
@@ -324,17 +324,18 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                                     Filtruj plan
                                 </span>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <Toggle
-                                    checked={mergeEnabled}
-                                    onChange={handleMergeToggle}
-                                    label="Scal komórki"
-                                />
-                                <span className="text-sm font-medium text-gray-600 whitespace-nowrap">
-                                    Scal komórki
-                                </span>
-                            </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                            <Toggle
+                                checked={mergeEnabled}
+                                onChange={handleMergeToggle}
+                                label="Scal komórki"
+                            />
+                            <span className="text-sm font-medium text-gray-600 whitespace-nowrap">
+                                Scal komórki
+                            </span>
                         </div>
+                    </div>
                     )}
                 </div>
                 <span className="text-sm text-gray-500 whitespace-nowrap">
