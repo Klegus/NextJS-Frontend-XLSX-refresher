@@ -278,7 +278,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
             <div className="overflow-x-auto">
                 <div
                     ref={containerRef}
-                    className="relative min-w-[800px] lg:min-w-0 [&_.current-time-highlight]:bg-wspia-blue/10 [&_.current-time-highlight]:text-wspia-blue"
+                    className="relative min-w-[800px] lg:min-w-0 [&_.current-time-highlight]:bg-wspia-blue/10 [&_.current-time-highlight]:text-wspia-blue [&_.current-time-highlight]:animate-pulse"
                     id="plan-content"
                     dangerouslySetInnerHTML={{ __html: filteredHtml }}
                 />
