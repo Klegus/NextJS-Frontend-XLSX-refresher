@@ -206,7 +206,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                     });
                     
                     const collectionName = plan.category;
-                    await fetch(process.env.NEXT_PUBLIC_API_URL + '/api/notifications/subscribe', {
+                    await fetch('/api/notifications/subscribe', {
                         method: 'POST',
                         headers: { 
                             'Content-Type': 'application/json'
@@ -228,7 +228,25 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
             // Wyłącz powiadomienia
             setNotificationsEnabled(false);
             localStorage.removeItem(`notifications-${plan.id}`);
-            // TODO: Dodaj endpoint do wypisywania z subskrypcji
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                const subscription = await registration.pushManager.getSubscription();
+                if (subscription) {
+                    await fetch('/api/notifications/unsubscribe', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            subscription,
+                            planId: plan.category
+                        })
+                    });
+                    await subscription.unsubscribe();
+                }
+            } catch (error) {
+                console.error('Failed to unsubscribe:', error);
+            }
         }
     }, [notificationsEnabled, plan.id]);
 
