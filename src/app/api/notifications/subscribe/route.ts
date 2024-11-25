@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
 
+const NEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://172.20.0.20';
+
 export async function POST(request: Request) {
   try {
     const { subscription, planId } = await request.json();
     
     // Forward the request to the backend
-    const backendResponse = await fetch('http://localhost:5000/api/notifications/subscribe', {
+    const backendResponse = await fetch(NEXT_PUBLIC_API_URL +'/api/notifications/subscribe', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
