@@ -336,7 +336,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                             </span>
                         </div>
                     </div>
-                    )}
+                    
                 </div>
                 <span className="text-sm text-gray-500 whitespace-nowrap">
                     Ostatnia aktualizacja: {timeSinceUpdate(plan.timestamp)}
