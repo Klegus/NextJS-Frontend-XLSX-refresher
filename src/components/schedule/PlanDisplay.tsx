@@ -99,13 +99,15 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
     };
 
     useEffect(() => {
-        // Process HTML to make subject names bold
+        // Process HTML to make subject names bold and merge cells
         const parser = new DOMParser();
         const doc = parser.parseFromString(plan.html, 'text/html');
         const table = doc.querySelector('table');
         
         if (table) {
             const rows = table.querySelectorAll('tr');
+            
+            // First pass: Make subject names bold
             rows.forEach((row, rowIndex) => {
                 const cells = row.querySelectorAll('td');
                 cells.forEach((cell, cellIndex) => {
@@ -117,6 +119,37 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                     }
                 });
             });
+
+            // Second pass: Merge cells vertically
+            for (let colIndex = 1; colIndex <= 5; colIndex++) { // For each day column
+                let currentContent = '';
+                let startRow = 0;
+                let spanCount = 0;
+
+                for (let rowIndex = 1; rowIndex < rows.length; rowIndex++) {
+                    const currentCell = rows[rowIndex].cells[colIndex];
+                    if (!currentCell) continue;
+
+                    const cellContent = currentCell.innerHTML.trim();
+
+                    if (cellContent === currentContent && currentContent !== '') {
+                        // Hide this cell as it's part of a merge
+                        currentCell.style.display = 'none';
+                        spanCount++;
+                        
+                        // Update the rowspan of the first cell in the merge group
+                        const firstCell = rows[startRow].cells[colIndex];
+                        if (firstCell) {
+                            firstCell.rowSpan = spanCount + 1;
+                        }
+                    } else {
+                        // New content found, reset tracking
+                        currentContent = cellContent;
+                        startRow = rowIndex;
+                        spanCount = 0;
+                    }
+                }
+            }
             
             const processedHtml = table.outerHTML;
             
