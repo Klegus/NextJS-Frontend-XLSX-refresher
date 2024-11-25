@@ -10,12 +10,9 @@ export async function POST(request: Request) {
     const backendResponse = await fetch(NEXT_PUBLIC_API_URL +'/api/notifications/subscribe', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ subscription, collectionName }),
-      mode: 'cors',
-      credentials: 'include'
+      body: JSON.stringify({ subscription, collectionName })
     });
 
     if (!backendResponse.ok) {
