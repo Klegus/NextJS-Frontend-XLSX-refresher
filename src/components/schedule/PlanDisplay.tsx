@@ -107,73 +107,79 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
         return table.outerHTML;
     };
 
-    useEffect(() => {
-        // Process HTML to make subject names bold and merge cells
+    const processHtml = (htmlContent: string) => {
         const parser = new DOMParser();
-        const doc = parser.parseFromString(plan.html, 'text/html');
+        const doc = parser.parseFromString(htmlContent, 'text/html');
         const table = doc.querySelector('table');
         
-        if (table) {
-            const rows = table.querySelectorAll('tr');
-            
-            // First pass: Make subject names bold
-            rows.forEach((row, rowIndex) => {
-                const cells = row.querySelectorAll('td');
-                cells.forEach((cell, cellIndex) => {
-                    if (cellIndex !== 0) { // Skip first column (time)
-                        cell.innerHTML = cell.innerHTML.replace(
-                            /^([^-]+?)(?=-)(-)/,
-                            '<strong class="text-wspia-gray">$1</strong><br/>'
-                        );
-                    }
-                });
+        if (!table) return htmlContent;
+
+        const rows = table.querySelectorAll('tr');
+        
+        // First pass: Make subject names bold
+        rows.forEach((row, rowIndex) => {
+            const cells = row.querySelectorAll('td');
+            cells.forEach((cell, cellIndex) => {
+                if (cellIndex !== 0) { // Skip first column (time)
+                    cell.innerHTML = cell.innerHTML.replace(
+                        /^([^-]+?)(?=-)(-)/,
+                        '<strong class="text-wspia-gray">$1</strong><br/>'
+                    );
+                }
             });
+        });
 
-            // Second pass: Merge cells vertically if enabled
-            if (mergeEnabled) {
-                for (let colIndex = 1; colIndex <= 5; colIndex++) { // For each day column
-                    let currentContent = '';
-                    let startRow = 0;
-                    let spanCount = 0;
+        // Reset all merged cells
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            cells.forEach(cell => {
+                cell.style.display = '';
+                cell.removeAttribute('rowspan');
+            });
+        });
 
-                    for (let rowIndex = 1; rowIndex < rows.length; rowIndex++) {
-                        const currentCell = rows[rowIndex].cells[colIndex];
-                        if (!currentCell) continue;
+        // Second pass: Merge cells vertically if enabled
+        if (mergeEnabled) {
+            for (let colIndex = 1; colIndex <= 5; colIndex++) {
+                let currentContent = '';
+                let startRow = 0;
+                let spanCount = 0;
 
-                        const cellContent = currentCell.innerHTML.trim();
+                for (let rowIndex = 1; rowIndex < rows.length; rowIndex++) {
+                    const currentCell = rows[rowIndex].cells[colIndex];
+                    if (!currentCell) continue;
 
-                        if (cellContent === currentContent && currentContent !== '') {
-                            // Hide this cell as it's part of a merge
-                            currentCell.style.display = 'none';
-                            spanCount++;
-                            
-                            // Update the rowspan of the first cell in the merge group
-                            const firstCell = rows[startRow].cells[colIndex];
-                            if (firstCell) {
-                                firstCell.rowSpan = spanCount + 1;
-                            }
-                        } else {
-                            // New content found, reset tracking
-                            currentContent = cellContent;
-                            startRow = rowIndex;
-                            spanCount = 0;
+                    const cellContent = currentCell.innerHTML.trim();
+
+                    if (cellContent === currentContent && currentContent !== '') {
+                        currentCell.style.display = 'none';
+                        spanCount++;
+                        
+                        const firstCell = rows[startRow].cells[colIndex];
+                        if (firstCell) {
+                            firstCell.rowSpan = spanCount + 1;
                         }
+                    } else {
+                        currentContent = cellContent;
+                        startRow = rowIndex;
+                        spanCount = 0;
                     }
                 }
             }
-            
-            const processedHtml = table.outerHTML;
-            
-            if (plan.category === 'st' && currentWeek && filterEnabled) {
-                const filtered = filterPlanForCurrentWeek(processedHtml, currentWeek);
-                setFilteredHtml(filtered);
-            } else {
-                setFilteredHtml(processedHtml);
-            }
-        } else {
-            setFilteredHtml(plan.html);
         }
-    }, [plan, currentWeek, filterEnabled]);
+
+        return table.outerHTML;
+    };
+
+    useEffect(() => {
+        let processedHtml = processHtml(plan.html);
+        
+        if (plan.category === 'st' && currentWeek && filterEnabled) {
+            processedHtml = filterPlanForCurrentWeek(processedHtml, currentWeek);
+        }
+        
+        setFilteredHtml(processedHtml);
+    }, [plan, currentWeek, filterEnabled, mergeEnabled]);
 
     const handleFilterToggle = () => {
         const newValue = !filterEnabled;
