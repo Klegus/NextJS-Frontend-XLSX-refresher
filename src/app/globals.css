@@ -332,7 +332,7 @@ button {
 }
 
 button:hover:not(:disabled) {
-  color: white;
+  
   background-color: var(--wspia-red) !important;
   transform: translateY(-1px);
 }
