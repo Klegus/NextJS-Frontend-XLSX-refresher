@@ -18,6 +18,7 @@ interface PlanStatus {
 }
 
 const FILTER_TOGGLE_KEY = 'planFilterEnabled';
+const MERGE_TOGGLE_KEY = 'planMergeEnabled';
 
 export const PlanDisplay: React.FC<PlanDisplayProps> = ({
     plan,
@@ -30,6 +31,14 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
     const [filterEnabled, setFilterEnabled] = useState(() => {
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem(FILTER_TOGGLE_KEY);
+            return saved !== null ? saved === 'true' : true;
+        }
+        return true;
+    });
+
+    const [mergeEnabled, setMergeEnabled] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem(MERGE_TOGGLE_KEY);
             return saved !== null ? saved === 'true' : true;
         }
         return true;
@@ -120,33 +129,35 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                 });
             });
 
-            // Second pass: Merge cells vertically
-            for (let colIndex = 1; colIndex <= 5; colIndex++) { // For each day column
-                let currentContent = '';
-                let startRow = 0;
-                let spanCount = 0;
+            // Second pass: Merge cells vertically if enabled
+            if (mergeEnabled) {
+                for (let colIndex = 1; colIndex <= 5; colIndex++) { // For each day column
+                    let currentContent = '';
+                    let startRow = 0;
+                    let spanCount = 0;
 
-                for (let rowIndex = 1; rowIndex < rows.length; rowIndex++) {
-                    const currentCell = rows[rowIndex].cells[colIndex];
-                    if (!currentCell) continue;
+                    for (let rowIndex = 1; rowIndex < rows.length; rowIndex++) {
+                        const currentCell = rows[rowIndex].cells[colIndex];
+                        if (!currentCell) continue;
 
-                    const cellContent = currentCell.innerHTML.trim();
+                        const cellContent = currentCell.innerHTML.trim();
 
-                    if (cellContent === currentContent && currentContent !== '') {
-                        // Hide this cell as it's part of a merge
-                        currentCell.style.display = 'none';
-                        spanCount++;
-                        
-                        // Update the rowspan of the first cell in the merge group
-                        const firstCell = rows[startRow].cells[colIndex];
-                        if (firstCell) {
-                            firstCell.rowSpan = spanCount + 1;
+                        if (cellContent === currentContent && currentContent !== '') {
+                            // Hide this cell as it's part of a merge
+                            currentCell.style.display = 'none';
+                            spanCount++;
+                            
+                            // Update the rowspan of the first cell in the merge group
+                            const firstCell = rows[startRow].cells[colIndex];
+                            if (firstCell) {
+                                firstCell.rowSpan = spanCount + 1;
+                            }
+                        } else {
+                            // New content found, reset tracking
+                            currentContent = cellContent;
+                            startRow = rowIndex;
+                            spanCount = 0;
                         }
-                    } else {
-                        // New content found, reset tracking
-                        currentContent = cellContent;
-                        startRow = rowIndex;
-                        spanCount = 0;
                     }
                 }
             }
@@ -168,6 +179,12 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
         const newValue = !filterEnabled;
         setFilterEnabled(newValue);
         localStorage.setItem(FILTER_TOGGLE_KEY, String(newValue));
+    };
+
+    const handleMergeToggle = () => {
+        const newValue = !mergeEnabled;
+        setMergeEnabled(newValue);
+        localStorage.setItem(MERGE_TOGGLE_KEY, String(newValue));
     };
 
     const currentHighlightRef = useRef<HTMLTableCellElement | null>(null);
@@ -290,15 +307,27 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                         <h2 className="text-xl sm:text-2xl font-bold text-wspia-gray">Plan zajęć</h2>
                     </div>
                     {plan.category === 'st' && (
-                        <div className="flex items-center gap-2">
-                            <Toggle
-                                checked={filterEnabled}
-                                onChange={handleFilterToggle}
-                                label="Filtruj plan"
-                            />
-                            <span className="text-sm font-medium text-gray-600 whitespace-nowrap">
-                                Filtruj plan
-                            </span>
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                                <Toggle
+                                    checked={filterEnabled}
+                                    onChange={handleFilterToggle}
+                                    label="Filtruj plan"
+                                />
+                                <span className="text-sm font-medium text-gray-600 whitespace-nowrap">
+                                    Filtruj plan
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Toggle
+                                    checked={mergeEnabled}
+                                    onChange={handleMergeToggle}
+                                    label="Scal komórki"
+                                />
+                                <span className="text-sm font-medium text-gray-600 whitespace-nowrap">
+                                    Scal komórki
+                                </span>
+                            </div>
                         </div>
                     )}
                 </div>
