@@ -34,7 +34,11 @@ body {
   background-color: rgba(227, 30, 36, 0.15) !important;
   box-shadow: inset 0 0 0 2px rgba(227, 30, 36, 0.5) !important;
   position: relative !important;
-  z-index: 5 !important;
+  z-index: 50 !important;
+}
+
+td.current-time-highlight {
+  background-color: rgba(227, 30, 36, 0.15) !important;
 }
 
 @keyframes pulse {

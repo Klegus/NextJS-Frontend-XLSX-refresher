@@ -152,8 +152,10 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
             if (!table) return;
 
             // Remove previous highlights
-            table.querySelectorAll('.current-time-highlight').forEach(el => {
+            const previousHighlights = table.querySelectorAll('.current-time-highlight');
+            previousHighlights.forEach(el => {
                 el.classList.remove('current-time-highlight');
+                el.classList.remove('animate-pulse');
             });
 
             // Skip weekends regardless of category
@@ -201,14 +203,16 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                     });
                     const dayCell = row.cells[currentDay];
                     if (dayCell) {
-                        dayCell.classList.add('current-time-highlight');
-                        currentSlot = dayCell.textContent || null;
-                    
-                        // Scroll to the highlighted cell with smooth animation
-                        dayCell.scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'center',
-                            inline: 'center'
+                        requestAnimationFrame(() => {
+                            dayCell.classList.add('current-time-highlight');
+                            currentSlot = dayCell.textContent || null;
+                        
+                            // Scroll to the highlighted cell with smooth animation
+                            dayCell.scrollIntoView({
+                                behavior: 'smooth',
+                                block: 'center',
+                                inline: 'center'
+                            });
                         });
                         found = true;
                         break;
