@@ -5,7 +5,7 @@ export async function POST(request: Request) {
     const { subscription, planId } = await request.json();
     
     // Forward the request to the backend
-    const backendResponse = await fetch('http://localhost:5000/api/notifications/subscribe', {
+    const backendResponse = await fetch('http://localhost:5000/api/notifications/unsubscribe', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     return NextResponse.json(data);
   } catch (error) {
     return NextResponse.json(
-      { error: 'Failed to subscribe' },
+      { error: 'Failed to unsubscribe' },
       { status: 500 }
     );
   }
