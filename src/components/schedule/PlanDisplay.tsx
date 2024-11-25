@@ -142,92 +142,87 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
     useEffect(() => {
         const highlightCurrentTimeSlot = () => {
             if (!containerRef.current) return;
-
+    
             const now = new Date();
             const currentDay = now.getDay();
             const currentTime = now.getHours() * 60 + now.getMinutes();
-
+    
             const table = containerRef.current.querySelector('table');
             if (!table) return;
-
+    
             // Skip weekends regardless of category
             if (currentDay === 0 || currentDay === 6) {
                 onTimeSlotChange?.("Weekend! Czas wolny od zajęć 🎉", null);
                 return;
             }
-
-            // Remove highlight from previous cell
-            if (currentHighlightRef.current) {
-                currentHighlightRef.current.classList.remove('current-time-highlight');
-                currentHighlightRef.current = null;
-            }
-
+    
+            // Remove highlight from previous cell only if we're going to add a new one
+            let foundNewCell = false;
+            let newCell: HTMLTableCellElement | null = null;
+            let currentSlot: string | null = null;
+    
             // Find current time slot
             const rows = table.querySelectorAll('tr');
-            let currentSlot = null;
-
+            
             for (let i = 1; i < rows.length; i++) {
                 const cells = rows[i].querySelectorAll('td');
                 if (cells.length === 0) continue;
-
+    
                 const timeCell = cells[0];
                 if (!timeCell) continue;
-
+    
                 const timeParts = timeCell.textContent?.trim().split('-') || [];
                 if (timeParts.length !== 2) continue;
-
+    
                 const startTime = convertTimeToMinutes(timeParts[0]);
                 const endTime = convertTimeToMinutes(timeParts[1]);
-
-                console.log('Checking time slot:', {
-                    timeCell: timeCell.textContent,
-                    startTime,
-                    endTime,
-                    currentTime,
-                    isInTimeSlot: currentTime >= startTime && currentTime < endTime
-                });
-
+    
                 if (currentTime >= startTime && currentTime < endTime) {
-                    console.log('Found matching time slot!', {
-                        row: i,
-                        timeSlot: timeCell.textContent,
-                        dayCell: rows[i].cells[currentDay]?.textContent
-                    });
-                    
                     const dayCell = rows[i].cells[currentDay];
                     if (dayCell) {
-                        dayCell.classList.add('current-time-highlight');
-                        currentHighlightRef.current = dayCell;
+                        foundNewCell = true;
+                        newCell = dayCell;
                         currentSlot = dayCell.textContent || null;
-                        
-                        dayCell.scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'center',
-                            inline: 'center'
-                        });
                         break;
                     }
                 }
             }
-
+    
+            // Only update highlighting if we found a new cell
+            if (foundNewCell && newCell) {
+                if (currentHighlightRef.current && currentHighlightRef.current !== newCell) {
+                    currentHighlightRef.current.classList.remove('current-time-highlight');
+                }
+                
+                newCell.classList.add('current-time-highlight');
+                currentHighlightRef.current = newCell;
+                
+                newCell.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center',
+                    inline: 'center'
+                });
+            }
+    
             onTimeSlotChange?.(currentSlot, null);
         };
 
-        // Initial highlight
-        highlightCurrentTimeSlot();
+        // Initial highlight with a small delay to ensure DOM is ready
+        const initialTimeout = setTimeout(highlightCurrentTimeSlot, 100);
         
         // Set up interval for updates
         const interval = setInterval(highlightCurrentTimeSlot, 60000);
 
         // Cleanup function
         return () => {
+            clearTimeout(initialTimeout);
             clearInterval(interval);
             if (currentHighlightRef.current) {
                 currentHighlightRef.current.classList.remove('current-time-highlight');
                 currentHighlightRef.current = null;
             }
         };
-    }, [plan, currentWeek, onTimeSlotChange]);
+    }, [plan, currentWeek]);
 
     useEffect(() => {
         const checkStatus = async () => {
