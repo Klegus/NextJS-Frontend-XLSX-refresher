@@ -218,7 +218,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                     });
                     
                     setNotificationsEnabled(true);
-                    localStorage.setItem(`notifications-${collectionName}`, 'true');
+                    localStorage.setItem(`notifications-${planId}`, 'true');
                 }
             } catch (error: unknown) {
                 const errorMessage = (error as Error).message || 'Unknown error';
