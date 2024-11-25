@@ -205,7 +205,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                         applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
                     });
                     
-                    const collectionName = plan.category;
+                    const collectionName = plan.id; // Using full plan ID instead of category
                     await fetch('/api/notifications/subscribe', {
                         method: 'POST',
                         headers: { 
@@ -227,7 +227,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
         } else {
             // Wyłącz powiadomienia
             setNotificationsEnabled(false);
-            localStorage.removeItem(`notifications-${plan.id}`);
+            localStorage.removeItem(`notifications-${plan.id}`); // This is already correct
             try {
                 const registration = await navigator.serviceWorker.ready;
                 const subscription = await registration.pushManager.getSubscription();
@@ -252,9 +252,26 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
 
     // Sprawdź stan powiadomień przy montowaniu
     useEffect(() => {
-        const notificationState = localStorage.getItem(`notifications-${plan.category}`);
-        setNotificationsEnabled(notificationState === 'true');
-    }, [plan.category]);
+        const checkNotificationStatus = async () => {
+            const notificationState = localStorage.getItem(`notifications-${plan.id}`);
+            if (notificationState === 'true') {
+                // Verify if the subscription is still valid
+                const registration = await navigator.serviceWorker.ready;
+                const subscription = await registration.pushManager.getSubscription();
+                if (subscription) {
+                    setNotificationsEnabled(true);
+                } else {
+                    // If subscription is not valid anymore, remove from localStorage
+                    localStorage.removeItem(`notifications-${plan.id}`);
+                    setNotificationsEnabled(false);
+                }
+            } else {
+                setNotificationsEnabled(false);
+            }
+        };
+
+        checkNotificationStatus();
+    }, [plan.id]);
 
     const currentHighlightRef = useRef<HTMLTableCellElement | null>(null);
 
