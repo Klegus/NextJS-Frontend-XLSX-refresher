@@ -263,8 +263,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                 if (subscription) {
                     setNotificationsEnabled(true);
                 } else {
-                    // If subscription is not valid anymore, remove from localStorage
-                    localStorage.removeItem(`notifications-${planId}`);
+                    // Jeśli subskrypcja jest nieważna, tylko aktualizujemy stan
                     setNotificationsEnabled(false);
                 }
             } else {
