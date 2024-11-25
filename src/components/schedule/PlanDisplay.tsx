@@ -227,7 +227,8 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
         } else {
             // Wyłącz powiadomienia
             setNotificationsEnabled(false);
-            localStorage.removeItem(`notifications-${plan.id}`); // This is already correct
+            const planId = plan.id.split('-')[0];
+            localStorage.removeItem(`notifications-${planId}`);
             try {
                 const registration = await navigator.serviceWorker.ready;
                 const subscription = await registration.pushManager.getSubscription();
@@ -239,7 +240,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                         },
                         body: JSON.stringify({
                             subscription,
-                            planId: plan.category
+                            planId: plan.id.split('-')[0]
                         })
                     });
                     await subscription.unsubscribe();
@@ -253,7 +254,8 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
     // Sprawdź stan powiadomień przy montowaniu
     useEffect(() => {
         const checkNotificationStatus = async () => {
-            const notificationState = localStorage.getItem(`notifications-${plan.id}`);
+            const planId = plan.id.split('-')[0];
+            const notificationState = localStorage.getItem(`notifications-${planId}`);
             if (notificationState === 'true') {
                 // Verify if the subscription is still valid
                 const registration = await navigator.serviceWorker.ready;
@@ -262,7 +264,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                     setNotificationsEnabled(true);
                 } else {
                     // If subscription is not valid anymore, remove from localStorage
-                    localStorage.removeItem(`notifications-${plan.id}`);
+                    localStorage.removeItem(`notifications-${planId}`);
                     setNotificationsEnabled(false);
                 }
             } else {
