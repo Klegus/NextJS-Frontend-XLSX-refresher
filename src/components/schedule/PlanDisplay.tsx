@@ -170,17 +170,17 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
             for (let i = 0; i < rows.length; i++) {
                 const row = rows[i];
                 if (found) break;
-                if (i === 0) return; // Skip header row
+                if (i === 0) continue; // Skip header row
 
                 const cells = row.querySelectorAll('td');
-                if (cells.length === 0) return;
+                if (cells.length === 0) continue;
 
                 // Skip first column (time column)
                 const timeCell = cells[0];
-                if (!timeCell) return;
+                if (!timeCell) continue;
 
-                const timeParts = timeCell.textContent?.split('-') || [];
-                if (timeParts.length !== 2) return;
+                const timeParts = timeCell.textContent?.trim().split('-') || [];
+                if (timeParts.length !== 2) continue;
 
                 const startTime = convertTimeToMinutes(timeParts[0]);
                 const endTime = convertTimeToMinutes(timeParts[1]);
