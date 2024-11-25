@@ -29,26 +29,29 @@ body {
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
-.current-time-highlight {
+.current-time-highlight:not(:empty) {
   animation: pulse 2s infinite;
-  background-color: rgba(227, 30, 36, 0.15);
-  box-shadow: 0 0 15px rgba(227, 30, 36, 0.3);
+  background-color: rgba(227, 30, 36, 0.2);
+  box-shadow: 0 0 15px rgba(227, 30, 36, 0.4);
   position: relative;
   z-index: 5;
 }
 
 @keyframes pulse {
   0% {
+    background-color: rgba(227, 30, 36, 0.2);
     transform: scale(1);
-    box-shadow: 0 0 15px rgba(227, 30, 36, 0.3);
+    box-shadow: 0 0 15px rgba(227, 30, 36, 0.4);
   }
   50% {
+    background-color: rgba(227, 30, 36, 0.3);
     transform: scale(1.02);
-    box-shadow: 0 0 20px rgba(227, 30, 36, 0.4);
+    box-shadow: 0 0 20px rgba(227, 30, 36, 0.5);
   }
   100% {
+    background-color: rgba(227, 30, 36, 0.2);
     transform: scale(1);
-    box-shadow: 0 0 15px rgba(227, 30, 36, 0.3);
+    box-shadow: 0 0 15px rgba(227, 30, 36, 0.4);
   }
 }
 #plan-content {
