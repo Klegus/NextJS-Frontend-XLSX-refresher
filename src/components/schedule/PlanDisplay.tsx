@@ -206,13 +206,18 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                     });
                     
                     const collectionName = plan.category;
-                    await fetch('/api/notifications/subscribe', {
+                    await fetch(process.env.NEXT_PUBLIC_API_URL + '/api/notifications/subscribe', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
                         body: JSON.stringify({
                             subscription,
                             collectionName
-                        })
+                        }),
+                        mode: 'cors',
+                        credentials: 'include'
                     });
                     
                     setNotificationsEnabled(true);
