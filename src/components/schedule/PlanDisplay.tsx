@@ -145,6 +145,9 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
             const currentDay = now.getDay();
             const currentTime = now.getHours() * 60 + now.getMinutes();
 
+            console.log('Current day:', currentDay); // 1-5 dla pon-pt
+            console.log('Current time (in minutes):', currentTime);
+
             const table = containerRef.current.querySelector('table');
             if (!table) return;
 
@@ -179,7 +182,20 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                 const startTime = convertTimeToMinutes(timeParts[0]);
                 const endTime = convertTimeToMinutes(timeParts[1]);
 
+                console.log('Checking time slot:', {
+                    timeCell: timeCell.textContent,
+                    startTime,
+                    endTime,
+                    currentTime,
+                    isInTimeSlot: currentTime >= startTime && currentTime < endTime
+                });
+
                 if (currentTime >= startTime && currentTime < endTime) {
+                    console.log('Found matching time slot!', {
+                        row: i,
+                        timeSlot: timeCell.textContent,
+                        dayCell: row.cells[currentDay]?.textContent
+                    });
                     const dayCell = row.cells[currentDay];
                     if (dayCell) {
                         dayCell.classList.add('current-time-highlight');
