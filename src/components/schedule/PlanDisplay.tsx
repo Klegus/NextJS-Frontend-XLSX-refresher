@@ -205,7 +205,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                         applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
                     });
                     
-                    const collectionName = plan.id; // Using full plan ID instead of category
+                    const planId = plan.id.split('-')[0]; // Get only the plan ID part before any group info
                     await fetch('/api/notifications/subscribe', {
                         method: 'POST',
                         headers: { 
@@ -213,7 +213,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                         },
                         body: JSON.stringify({
                             subscription,
-                            collectionName
+                            collectionName: planId
                         })
                     });
                     
