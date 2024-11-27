@@ -25,8 +25,9 @@ export async function POST(request: Request) {
     return NextResponse.json(data);
   } catch (error) {
     console.error('Subscription error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to subscribe', details: error.message },
+      { error: 'Failed to subscribe', details: errorMessage },
       { status: 500 }
     );
   }
