@@ -120,7 +120,7 @@ export default function HomePage() {
               className="w-24 h-24 object-contain"
             />
           </div>
-          <h1 className="text-4xl font-bold text-gray-800 mb-4">
+          <h1 className="text-3xl font-bold text-gray-800 mb-4">
             {selection.group ? `Plan zajęć - ${selection.group}` : 'Plan zajęć'}
           </h1>
         </div>

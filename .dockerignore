@@ -1,0 +1,37 @@
+# Dependencies
+node_modules
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Next.js build output
+.next
+
+# Git and version control
+.git
+.gitignore
+
+# Environment variables
+.env*
+!.env.example
+
+# IDE files
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage
+
+# Debug logs
+logs
+*.log
+
+# Temporary files
+tmp
+temp

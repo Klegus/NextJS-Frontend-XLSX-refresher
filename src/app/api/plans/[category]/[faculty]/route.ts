@@ -8,9 +8,9 @@ export async function GET(
   { params }: { params: { category: string; faculty: string } }
 ) {
   try {
-    // Destructure params directly since they're already resolved
-    const { category, faculty } = params;
-    
+    // Await params before accessing its properties
+    const { category, faculty } = await params; 
+
     const response = await fetch(
       `${API_URL}/api/plans/${encodeURIComponent(category)}/${encodeURIComponent(faculty)}`
     );

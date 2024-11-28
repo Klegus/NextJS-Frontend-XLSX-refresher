@@ -1,4 +1,3 @@
-// File: src/app/api/faculties/[category]/route.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
@@ -9,7 +8,10 @@ export async function GET(
   { params }: { params: { category: string } }
 ) {
   try {
-    if (!params?.category) {
+    // Await params before accessing category
+    const { category } = await params; 
+
+    if (!category) {
       return NextResponse.json(
         { error: 'Category parameter is required' },
         { status: 400 }
@@ -17,7 +19,7 @@ export async function GET(
     }
 
     const response = await fetch(
-      `${API_URL}/api/faculties/${encodeURIComponent(params.category)}`
+      `${API_URL}/api/faculties/${encodeURIComponent(category)}`
     );
     
     if (!response.ok) {
