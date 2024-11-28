@@ -36,7 +36,6 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
         return true;
     });
 
-    const [notificationsEnabled, setNotificationsEnabled] = useState(false);
     const [mergeEnabled, setMergeEnabled] = useState(() => {
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem(MERGE_TOGGLE_KEY);
@@ -194,85 +193,6 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
         localStorage.setItem(MERGE_TOGGLE_KEY, String(newValue));
     };
 
-    const handleNotificationToggle = useCallback(async () => {
-        if (!notificationsEnabled) {
-            try {
-                const permission = await Notification.requestPermission();
-                if (permission === 'granted') {
-                    const registration = await navigator.serviceWorker.register('/notification-worker.js');
-                    const subscription = await registration.pushManager.subscribe({
-                        userVisibleOnly: true,
-                        applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-                    });
-                    
-                    const planId = plan.id.split('-')[0]; // Get only the plan ID part before any group info
-                    await fetch('/api/notifications/subscribe', {
-                        method: 'POST',
-                        headers: { 
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            subscription,
-                            collectionName: planId
-                        })
-                    });
-                    
-                    setNotificationsEnabled(true);
-                    localStorage.setItem(`notifications-${planId}`, 'true');
-                }
-            } catch (error: unknown) {
-                const errorMessage = (error as Error).message || 'Unknown error';
-                console.log('Failed to enable notifications:', errorMessage);
-            }
-        } else {
-            // Wyłącz powiadomienia
-            setNotificationsEnabled(false);
-            const planId = plan.id.split('-')[0];
-            localStorage.setItem(`notifications-${planId}`, 'false');
-            try {
-                const registration = await navigator.serviceWorker.ready;
-                const subscription = await registration.pushManager.getSubscription();
-                if (subscription) {
-                    await fetch('/api/notifications/unsubscribe', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            subscription,
-                            planId: plan.id.split('-')[0]
-                        })
-                    });
-                    await subscription.unsubscribe();
-                }
-            } catch (error) {
-                console.error('Failed to unsubscribe:', error);
-            }
-        }
-    }, [notificationsEnabled, plan.id]);
-
-    // Sprawdź stan powiadomień przy montowaniu
-    useEffect(() => {
-        const checkNotificationStatus = async () => {
-            const planId = plan.id.split('-')[0];
-            const notificationState = localStorage.getItem(`notifications-${planId}`);
-            if (notificationState === 'true') {
-                // Verify if the subscription is still valid
-                const registration = await navigator.serviceWorker.ready;
-                const subscription = await registration.pushManager.getSubscription();
-                if (subscription) {
-                    setNotificationsEnabled(true);
-                } else {
-                    // Jeśli subskrypcja jest nieważna, tylko aktualizujemy stan
-                    setNotificationsEnabled(false);
-                }
-            } else {
-                setNotificationsEnabled(false);
-            }
-        };
-
-        checkNotificationStatus();
-    }, [plan.id]);
 
     const currentHighlightRef = useRef<HTMLTableCellElement | null>(null);
 
@@ -414,16 +334,6 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                             />
                             <span className="text-sm font-medium text-gray-600 whitespace-nowrap">
                                 Scal komórki
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Toggle
-                                checked={notificationsEnabled}
-                                onChange={handleNotificationToggle}
-                                label="Powiadomienia o zmianach"
-                            />
-                            <span className="text-sm font-medium text-gray-600 whitespace-nowrap">
-                                Powiadomienia
                             </span>
                         </div>
                     </div>
