@@ -77,8 +77,8 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
 
             cells.forEach((cell, index) => {
                 if (index === 0) return; // Pomijamy kolumnę z godzinami
-                if (index > 5) { // Ukryj kolumny po piątku
-                    cell.style.display = 'none';
+                if (index > 5) { // Wyczyść zawartość kolumn po piątku
+                    cell.innerHTML = '';
                     return;
                 }
 
@@ -99,9 +99,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                 }
             });
 
-            if (!hasLessonsInWeek) {
-                row.style.display = 'none';
-            }
+            // Nie ukrywamy już całych wierszy, nawet jeśli nie ma lekcji w tym tygodniu
         }
 
         return table.outerHTML;
