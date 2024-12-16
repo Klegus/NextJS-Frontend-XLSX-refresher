@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import MaintenancePage from './maintenance';
+import { MaintenancePage } from '@/components/status/MaintenancePage';
+import { checkServerStatus, isMaintenanceMode } from '@/api/serverStatus';
 import { SelectionControls } from '@/components/schedule/SelectionControls';
 import { PlanDisplay } from '@/components/schedule/PlanDisplay';
 import { BlogSection } from '@/components/activities/BlogSection';
@@ -29,11 +30,19 @@ export default function HomePage() {
   useEffect(() => {
     const checkMaintenanceStatus = async () => {
       try {
-        const response = await fetch('/api/status');
-        const data = await response.json();
-        setIsMaintenanceMode(data.maintenance_mode === true);
+        const status = await checkServerStatus();
+        setIsMaintenanceMode(isMaintenanceMode(status));
+        
+        // Ustaw interwał sprawdzania na podstawie otrzymanej wartości
+        const interval = setInterval(async () => {
+          const newStatus = await checkServerStatus();
+          setIsMaintenanceMode(isMaintenanceMode(newStatus));
+        }, status.check_interval * 1000); // konwersja na milisekundy
+
+        return () => clearInterval(interval);
       } catch (error) {
-        console.error('Failed to check maintenance status:', error);
+        console.error('Błąd podczas sprawdzania statusu serwera:', error);
+        setError('Nie udało się sprawdzić statusu serwera');
       } finally {
         setLoading(false);
       }
