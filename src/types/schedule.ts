@@ -62,6 +62,7 @@ export interface ServerStatus {
   status: string;
   last_check: string;
   maintenance_mode: boolean;
+  check_interval: number;
 }
 
 export interface SelectionState {
