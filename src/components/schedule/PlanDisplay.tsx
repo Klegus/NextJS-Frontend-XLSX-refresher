@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { Toggle } from '@/components/ui/Toggle';
 import { Plan } from '@/types/schedule';
 import { timeSinceUpdate, convertTimeToMinutes } from '@/lib/utils';
+import { censorLecturerNamesInHtml, isCensorshipEnabled } from '../../../utils/censor';
+import { EmailVerificationModal } from '@/components/ui/EmailVerificationModal';
 
 interface PlanDisplayProps {
   plan: Plan;
@@ -43,8 +45,21 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
         }
         return true;
     });
+    
+    // Dodajemy stan dla kontroli cenzury i modala
+    const [censorshipDisabled, setCensorshipDisabled] = useState(() => {
+        if (typeof window !== 'undefined') {
+            // Sprawdzamy czy cenzura jest wyłączona (użytkownik jest zweryfikowany)
+            return localStorage.getItem('verified_email') === 'true';
+        }
+        return false;
+    });
+    const [showModal, setShowModal] = useState(false);
 
     const filterPlanForCurrentWeek = (html: string, weekRange: { start: Date; end: Date }) => {
+        // Apply name censorship first
+        html = censorLecturerNamesInHtml(html);
+        
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
         const table = doc.querySelector('table');
@@ -106,6 +121,9 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
     };
 
     const processHtml = (htmlContent: string) => {
+        // Apply name censorship
+        htmlContent = censorLecturerNamesInHtml(htmlContent);
+        
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlContent, 'text/html');
         const table = doc.querySelector('table');
@@ -169,7 +187,59 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
         return table.outerHTML;
     };
 
-    useEffect(() => {
+    const handleFilterToggle = () => {
+        const newValue = !filterEnabled;
+        setFilterEnabled(newValue);
+        if (typeof window !== 'undefined') {
+            localStorage.setItem(FILTER_TOGGLE_KEY, String(newValue));
+        }
+    };
+
+    const handleMergeToggle = () => {
+        const newValue = !mergeEnabled;
+        setMergeEnabled(newValue);
+        if (typeof window !== 'undefined') {
+            localStorage.setItem(MERGE_TOGGLE_KEY, String(newValue));
+        }
+    };
+
+    // Funkcja obsługująca zmianę stanu cenzury
+    const handleCensorshipToggle = () => {
+        if (censorshipDisabled) {
+            // Jeśli cenzura jest wyłączona, włączamy ją ponownie
+            localStorage.removeItem('verified_email');
+            localStorage.removeItem('verified_email_address');
+            setCensorshipDisabled(false);
+            // Odświeżamy zawartość planu
+            updatePlanContent();
+        } else {
+            // Sprawdź, czy użytkownik jest już zweryfikowany
+            const verifiedEmail = localStorage.getItem('verified_email_address');
+            if (verifiedEmail) {
+                // Jeśli email jest już zweryfikowany, po prostu wyłączamy cenzurę
+                localStorage.setItem('verified_email', 'true');
+                setCensorshipDisabled(true);
+                // Odświeżamy zawartość planu
+                updatePlanContent();
+            } else {
+                // Jeśli nie jest zweryfikowany, wyświetlamy modal weryfikacji
+                setShowModal(true);
+            }
+        }
+    };
+
+    // Obsługa weryfikacji emaila
+    const handleEmailVerification = (verified: boolean) => {
+        if (verified) {
+            // Zakładamy, że localStorage został już ustawiony w komponencie modala
+            setCensorshipDisabled(true);
+            // Odświeżamy zawartość planu
+            updatePlanContent();
+        }
+    };
+
+    // Funkcja do odświeżania zawartości planu
+    const updatePlanContent = useCallback(() => {
         let processedHtml = processHtml(plan.html);
         
         if (plan.category === 'st' && currentWeek && filterEnabled) {
@@ -177,20 +247,12 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
         }
         
         setFilteredHtml(processedHtml);
-    }, [plan, currentWeek, filterEnabled, mergeEnabled]);
+    }, [plan.html, plan.category, currentWeek, filterEnabled, processHtml, filterPlanForCurrentWeek]);
 
-    const handleFilterToggle = () => {
-        const newValue = !filterEnabled;
-        setFilterEnabled(newValue);
-        localStorage.setItem(FILTER_TOGGLE_KEY, String(newValue));
-    };
-
-    const handleMergeToggle = () => {
-        const newValue = !mergeEnabled;
-        setMergeEnabled(newValue);
-        localStorage.setItem(MERGE_TOGGLE_KEY, String(newValue));
-    };
-
+    // Efekt dla aktualizacji planu gdy zmienia się status cenzury lub inne stany
+    useEffect(() => {
+        updatePlanContent();
+    }, [censorshipDisabled, filterEnabled, mergeEnabled, plan, currentWeek, updatePlanContent]);
 
     const currentHighlightRef = useRef<HTMLTableCellElement | null>(null);
 
@@ -311,16 +373,16 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                         />
                         <h2 className="text-xl sm:text-2xl font-bold text-wspia-gray">Plan zajęć</h2>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-wrap items-center gap-4">
                         {plan.category === 'st' && (
                             <div className="flex items-center gap-2">
                                 <Toggle
                                     checked={filterEnabled}
                                     onChange={handleFilterToggle}
-                                    label="Filtruj plan"
+                                    label="Filtruj bieżący tydzień"
                                 />
-                                <span className="text-sm font-medium text-gray-600 whitespace-nowrap">
-                                    Filtruj plan
+                                <span className="text-sm text-gray-600">
+                                    Filtruj bieżący tydzień
                                 </span>
                             </div>
                         )}
@@ -328,14 +390,23 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                             <Toggle
                                 checked={mergeEnabled}
                                 onChange={handleMergeToggle}
-                                label="Scal komórki"
+                                label="Łącz komórki"
                             />
-                            <span className="text-sm font-medium text-gray-600 whitespace-nowrap">
-                                Scal komórki
+                            <span className="text-sm text-gray-600">
+                                Łącz komórki
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Toggle
+                                checked={censorshipDisabled}
+                                onChange={handleCensorshipToggle}
+                                label="Pokaż pełne dane wykładowców"
+                            />
+                            <span className="text-sm text-gray-600">
+                                Pokaż pełne dane wykładowców
                             </span>
                         </div>
                     </div>
-                    
                 </div>
                 <span className="text-sm text-gray-500 whitespace-nowrap">
                     Ostatnia aktualizacja: {timeSinceUpdate(plan.timestamp)}
@@ -350,6 +421,13 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                     dangerouslySetInnerHTML={{ __html: filteredHtml }}
                 />
             </div>
+            
+            {/* Modal weryfikacji emaila */}
+            <EmailVerificationModal 
+                isOpen={showModal}
+                onClose={() => setShowModal(false)}
+                onVerify={handleEmailVerification}
+            />
         </div>
     );
 };

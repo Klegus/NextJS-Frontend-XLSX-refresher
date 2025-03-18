@@ -1,10 +1,14 @@
 import { Plan, WeekRange } from '@/types/schedule';
+import { censorLecturerNamesInHtml } from '../../utils/censor';
 
 export function filterPlanForCurrentWeek(
   planHtml: string,
   weekRange: WeekRange,
   category: string | null
 ): string {
+  // Apply name censorship first
+  planHtml = censorLecturerNamesInHtml(planHtml);
+  
   const parser = new DOMParser();
   const doc = parser.parseFromString(planHtml, 'text/html');
   const table = doc.querySelector('table');
