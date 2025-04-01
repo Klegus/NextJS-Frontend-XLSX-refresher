@@ -20,6 +20,16 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Environment Variables
+
+This project uses the following environment variables:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `NEXT_PUBLIC_ENABLE_CENSORSHIP` | When set to `true`, lecturer names are censored by default and a toggle to show them is displayed. When set to any other value or not set, lecturer names are always shown and no toggle is displayed. | `false` |
+
+Copy the `.env.example` file to `.env.local` and adjust the variables as needed.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

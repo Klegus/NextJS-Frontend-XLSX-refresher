@@ -3,9 +3,18 @@
  * @returns {boolean} - Czy cenzura jest włączona
  */
 export function isCensorshipEnabled() {
+  // Sprawdź, czy cenzura jest w ogóle wymagana w aplikacji
+  // Jeśli zmienna środowiskowa NEXT_PUBLIC_ENABLE_CENSORSHIP nie jest ustawiona na "true",
+  // cenzura jest całkowicie wyłączona
+  var censoringEnabled = false;
+
+  if (typeof process !== 'undefined' && censoringEnabled) {
+    return false;
+  }
+  
   // Sprawdź czy jesteśmy w przeglądarce
   if (typeof window === 'undefined') {
-    return true; // Po stronie serwera zawsze włączona
+    return true; // Po stronie serwera zawsze włączona (jeśli cenzura jest aktywna)
   }
   
   try {

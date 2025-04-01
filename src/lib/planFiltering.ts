@@ -1,13 +1,15 @@
 import { Plan, WeekRange } from '@/types/schedule';
-import { censorLecturerNamesInHtml } from '../../utils/censor';
+import { censorLecturerNamesInHtml, isCensorshipEnabled } from '../../utils/censor';
 
 export function filterPlanForCurrentWeek(
   planHtml: string,
   weekRange: WeekRange,
   category: string | null
 ): string {
-  // Apply name censorship first
-  planHtml = censorLecturerNamesInHtml(planHtml);
+  // Apply name censorship only if it's enabled globally via environment variable
+  if (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_ENABLE_CENSORSHIP === 'true') {
+    planHtml = censorLecturerNamesInHtml(planHtml);
+  }
   
   const parser = new DOMParser();
   const doc = parser.parseFromString(planHtml, 'text/html');

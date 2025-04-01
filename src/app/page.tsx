@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { MaintenancePage } from '@/components/status/MaintenancePage';
-import { checkServerStatus, isMaintenanceMode } from '@/api/serverStatus';
+import { checkServerStatus, isMaintenanceMode as checkMaintenance } from '@/api/serverStatus';
 import { SelectionControls } from '@/components/schedule/SelectionControls';
 import { PlanDisplay } from '@/components/schedule/PlanDisplay';
 import { BlogSection } from '@/components/activities/BlogSection';
@@ -12,6 +12,10 @@ import { CurrentLessonInfo } from '@/components/schedule/CurrentLessonInfo';
 import { getWeekRange, shouldShowNextWeek } from '@/lib/utils';
 import { Plan, SelectionState } from '@/types/schedule';
 import { getPlan } from '@/lib/api';
+
+// Stałe dla localStorage
+const MERGE_TOGGLE_KEY = 'planMergeEnabled';
+const FILTER_TOGGLE_KEY = 'planFilterEnabled';
 
 export default function HomePage() {
   const [loading, setLoading] = useState(true);
@@ -27,16 +31,40 @@ export default function HomePage() {
   const [nextTimeSlot, setNextTimeSlot] = useState<string | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
 
+  // Dodajemy stan dla opcji filtrowania i łączenia komórek
+  const [filterEnabled, setFilterEnabled] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(FILTER_TOGGLE_KEY) === 'true';
+    }
+    return true; // Domyślnie włączone
+  });
+  
+  const [mergeEnabled, setMergeEnabled] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(MERGE_TOGGLE_KEY) === 'true';
+    }
+    return true; // Domyślnie włączone
+  });
+  
+  // Funkcje obsługujące zmiany stanów
+  const handleFilterToggle = (value: boolean) => {
+    setFilterEnabled(value);
+  };
+  
+  const handleMergeToggle = (value: boolean) => {
+    setMergeEnabled(value);
+  };
+
   useEffect(() => {
     const checkMaintenanceStatus = async () => {
       try {
         const status = await checkServerStatus();
-        setIsMaintenanceMode(isMaintenanceMode(status));
+        setIsMaintenanceMode(checkMaintenance(status));
         
         // Ustaw interwał sprawdzania na podstawie otrzymanej wartości
         const interval = setInterval(async () => {
           const newStatus = await checkServerStatus();
-          setIsMaintenanceMode(isMaintenanceMode(newStatus));
+          setIsMaintenanceMode(checkMaintenance(newStatus));
         }, status.check_interval * 1000); // konwersja na milisekundy
 
         return () => clearInterval(interval);
@@ -176,6 +204,11 @@ export default function HomePage() {
                         currentWeek={currentWeek}
                         isPrevDisabled={weekOffset === 0}
                         isNextDisabled={weekOffset === 1}
+                        planHtml={plan.html}
+                        mergeEnabled={mergeEnabled}
+                        isFilteringEnabled={filterEnabled}
+                        onFilterToggle={handleFilterToggle}
+                        onMergeToggle={handleMergeToggle}
                       />
                     )}
                     
@@ -186,6 +219,8 @@ export default function HomePage() {
                         setCurrentTimeSlot(current);
                         setNextTimeSlot(next);
                       }}
+                      onFilterToggle={handleFilterToggle}
+                      onMergeToggle={handleMergeToggle}
                     />
                   </>
                 )}

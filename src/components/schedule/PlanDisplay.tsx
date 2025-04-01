@@ -4,6 +4,7 @@ import { Plan } from '@/types/schedule';
 import { timeSinceUpdate, convertTimeToMinutes } from '@/lib/utils';
 import { censorLecturerNamesInHtml, isCensorshipEnabled } from '../../../utils/censor';
 import { EmailVerificationModal } from '@/components/ui/EmailVerificationModal';
+import { SuggestionModal } from '@/components/ui/SuggestionModal';
 
 interface PlanDisplayProps {
   plan: Plan;
@@ -12,6 +13,8 @@ interface PlanDisplayProps {
     end: Date;
   };
   onTimeSlotChange?: (current: string | null, next: string | null) => void;
+  onFilterToggle?: (isEnabled: boolean) => void;
+  onMergeToggle?: (isEnabled: boolean) => void;
 }
 
 interface PlanStatus {
@@ -25,7 +28,9 @@ const MERGE_TOGGLE_KEY = 'planMergeEnabled';
 export const PlanDisplay: React.FC<PlanDisplayProps> = ({
     plan,
     currentWeek,
-    onTimeSlotChange
+    onTimeSlotChange,
+    onFilterToggle,
+    onMergeToggle
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [filteredHtml, setFilteredHtml] = useState(plan.html);
@@ -46,8 +51,16 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
         return true;
     });
     
-    // Dodajemy stan dla kontroli cenzury i modala
+    // Check if censorship is enabled globally via environment variable
+    const isCensorshipEnabledGlobally = typeof process !== 'undefined' && 
+                                       process.env.NEXT_PUBLIC_ENABLE_CENSORSHIP === 'true';
+    
+    // Dodajemy stan dla kontroli cenzury i modala, tylko jeśli cenzura jest włączona globalnie
     const [censorshipDisabled, setCensorshipDisabled] = useState(() => {
+        if (!isCensorshipEnabledGlobally) {
+            return true; // Cenzura jest zawsze wyłączona, jeśli jest wyłączona globalnie
+        }
+        
         if (typeof window !== 'undefined') {
             // Sprawdzamy czy cenzura jest wyłączona (użytkownik jest zweryfikowany)
             return localStorage.getItem('verified_email') === 'true';
@@ -56,9 +69,14 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
     });
     const [showModal, setShowModal] = useState(false);
 
+    // Dodajemy stan dla modalu sugestii
+    const [showSuggestionModal, setShowSuggestionModal] = useState(false);
+
     const filterPlanForCurrentWeek = (html: string, weekRange: { start: Date; end: Date }) => {
-        // Apply name censorship first
-        html = censorLecturerNamesInHtml(html);
+        // Apply name censorship only if it's enabled globally
+        if (isCensorshipEnabledGlobally) {
+            html = censorLecturerNamesInHtml(html);
+        }
         
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
@@ -121,8 +139,10 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
     };
 
     const processHtml = (htmlContent: string) => {
-        // Apply name censorship
-        htmlContent = censorLecturerNamesInHtml(htmlContent);
+        // Apply name censorship only if it's enabled globally
+        if (isCensorshipEnabledGlobally) {
+            htmlContent = censorLecturerNamesInHtml(htmlContent);
+        }
         
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlContent, 'text/html');
@@ -193,6 +213,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
         if (typeof window !== 'undefined') {
             localStorage.setItem(FILTER_TOGGLE_KEY, String(newValue));
         }
+        onFilterToggle?.(newValue);
     };
 
     const handleMergeToggle = () => {
@@ -201,6 +222,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
         if (typeof window !== 'undefined') {
             localStorage.setItem(MERGE_TOGGLE_KEY, String(newValue));
         }
+        onMergeToggle?.(newValue);
     };
 
     // Funkcja obsługująca zmianę stanu cenzury
@@ -260,9 +282,10 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
         const highlightCurrentTimeSlot = () => {
             if (!containerRef.current) return;
     
-            const now = new Date();
-            const currentDay = now.getDay();
-            const currentTime = now.getHours() * 60 + now.getMinutes();
+            // Użyj czasu warszawskiego zamiast lokalnego
+            const warsawDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Warsaw' }));
+            const currentDay = warsawDate.getDay();
+            const currentTime = warsawDate.getHours() * 60 + warsawDate.getMinutes();
     
             const table = containerRef.current.querySelector('table');
             if (!table) return;
@@ -273,14 +296,16 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                 return;
             }
     
-            // Remove highlight from previous cell only if we're going to add a new one
-            let foundNewCell = false;
-            let newCell: HTMLTableCellElement | null = null;
-            let currentSlot: string | null = null;
+            // Remove highlight from previous cell
+            if (currentHighlightRef.current) {
+                currentHighlightRef.current.classList.remove('current-time-highlight');
+                currentHighlightRef.current = null;
+            }
     
             // Find current time slot
             const rows = table.querySelectorAll('tr');
-            
+            let currentSlot: string | null = null;
+    
             for (let i = 1; i < rows.length; i++) {
                 const cells = rows[i].querySelectorAll('td');
                 if (cells.length === 0) continue;
@@ -296,31 +321,24 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
     
                 if (currentTime >= startTime && currentTime < endTime) {
                     const dayCell = rows[i].cells[currentDay];
-                    if (dayCell) {
-                        foundNewCell = true;
-                        newCell = dayCell;
-                        currentSlot = dayCell.textContent || null;
+                    if (dayCell && dayCell.textContent?.trim() && dayCell.innerHTML.trim() !== "&nbsp;") {
+                        // Only highlight non-empty cells
+                        dayCell.classList.add('current-time-highlight');
+                        currentHighlightRef.current = dayCell;
+                        currentSlot = dayCell.textContent?.trim() || null;
+                        
+                        // Automatically center the view on non-empty cells
+                        dayCell.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'center',
+                            inline: 'center'
+                        });
                         break;
                     }
                 }
             }
     
-            // Only update highlighting if we found a new cell
-            if (foundNewCell && newCell) {
-                if (currentHighlightRef.current && currentHighlightRef.current !== newCell) {
-                    currentHighlightRef.current.classList.remove('current-time-highlight');
-                }
-                
-                newCell.classList.add('current-time-highlight');
-                currentHighlightRef.current = newCell;
-                
-                newCell.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'center',
-                    inline: 'center'
-                });
-            }
-    
+            // Send current slot info even if empty
             onTimeSlotChange?.(currentSlot, null);
         };
 
@@ -396,16 +414,19 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                                 Łącz komórki
                             </span>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <Toggle
-                                checked={censorshipDisabled}
-                                onChange={handleCensorshipToggle}
-                                label="Pokaż pełne dane wykładowców"
-                            />
-                            <span className="text-sm text-gray-600">
-                                Pokaż pełne dane wykładowców
-                            </span>
-                        </div>
+                        {/* Render the censorship toggle only if censorship is enabled globally */}
+                        {isCensorshipEnabledGlobally && (
+                            <div className="flex items-center gap-2">
+                                <Toggle
+                                    checked={censorshipDisabled}
+                                    onChange={handleCensorshipToggle}
+                                    label="Pokaż pełne dane wykładowców"
+                                />
+                                <span className="text-sm text-gray-600">
+                                    Pokaż pełne dane wykładowców
+                                </span>
+                            </div>
+                        )}
                     </div>
                 </div>
                 <span className="text-sm text-gray-500 whitespace-nowrap">
@@ -422,11 +443,29 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                 />
             </div>
             
-            {/* Modal weryfikacji emaila */}
-            <EmailVerificationModal 
-                isOpen={showModal}
-                onClose={() => setShowModal(false)}
-                onVerify={handleEmailVerification}
+            {/* Dodajemy przycisk do zgłaszania sugestii */}
+            <div className="mt-4 flex justify-end">
+                <button 
+                    onClick={() => setShowSuggestionModal(true)}
+                    className="px-4 py-2 text-wspia-red border-2 border-wspia-red rounded-lg hover:bg-wspia-red  transition-colors text-sm"
+                >
+                    Zgłoś sugestię lub błąd
+                </button>
+            </div>
+            
+            {/* Modal weryfikacji emaila - show only if censorship is enabled globally */}
+            {isCensorshipEnabledGlobally && (
+                <EmailVerificationModal 
+                    isOpen={showModal}
+                    onClose={() => setShowModal(false)}
+                    onVerify={handleEmailVerification}
+                />
+            )}
+            
+            {/* Modal zgłaszania sugestii */}
+            <SuggestionModal
+                isOpen={showSuggestionModal}
+                onClose={() => setShowSuggestionModal(false)}
             />
         </div>
     );

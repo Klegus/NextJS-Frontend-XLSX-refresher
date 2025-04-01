@@ -25,13 +25,36 @@ const nextConfig: NextConfig = {
       config.plugins.push(
         new JavaScriptObfuscator({
           compact: true,
-          identifierNamesGenerator: 'hexadecimal',
+          controlFlowFlattening: true,
+          controlFlowFlatteningThreshold: 0.75,
+          deadCodeInjection: true,
+          deadCodeInjectionThreshold: 0.4,
+          debugProtection: true,
+          debugProtectionInterval: 4000,
+          disableConsoleOutput: true,
+          identifierNamesGenerator: 'mangled',
+          numbersToExpressions: true,
+          renameGlobals: false,
+          renameProperties: false, // Włączenie może powodować błędy w React
           rotateStringArray: true,
+          selfDefending: true,
+          simplify: true,
+          splitStrings: true,
+          splitStringsChunkLength: 5,
           stringArray: true,
-          stringArrayEncoding: ['none'], // Zmienione z 'base64' dla lepszej wydajności
-          stringArrayThreshold: 0.5, // Zmniejszone dla lepszej wydajności
-          transformObjectKeys: false, // Wyłączone dla lepszej wydajności
-          disableConsoleOutput: true
+          stringArrayCallsTransform: true,
+          stringArrayCallsTransformThreshold: 0.7,
+          stringArrayEncoding: ['rc4'],
+          stringArrayIndexShift: true,
+          stringArrayRotate: true,
+          stringArrayShuffle: true,
+          stringArrayWrappersCount: 5,
+          stringArrayWrappersChainedCalls: true,
+          stringArrayWrappersParametersMaxCount: 5,
+          stringArrayWrappersType: 'function',
+          stringArrayThreshold: 0.8,
+          transformObjectKeys: false,
+          unicodeEscapeSequence: false // Unikamy tego dla lepszej wydajności
         })
       );
     }
