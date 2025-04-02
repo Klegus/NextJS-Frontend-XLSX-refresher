@@ -18,6 +18,14 @@ interface PlanGroup {
 
 const LAST_SELECTION_KEY = 'lastPlanSelection';
 
+// Add a LoadingIndicator component
+const LoadingIndicator = () => (
+  <div className="flex items-center justify-center py-2">
+    <div className="w-5 h-5 border-2 border-wspia-red border-t-transparent rounded-full animate-spin mr-2"></div>
+    <span className="text-wspia-gray text-sm">Ładowanie...</span>
+  </div>
+);
+
 export const SelectionControls: React.FC<SelectionControlsProps> = ({
   onSelectionChange,
   initialSelection = {}
@@ -82,12 +90,12 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
         setLoading(true);
         try {
           const data = await getPlans(selection.category, selection.faculty);
-          setPlans(data); // Ustaw tablicę planów
+          setPlans(data);
           setError(null);
         } catch (err) {
           console.error('Error loading plans:', err);
           setError('Nie udało się załadować planów');
-          setPlans([]); // Ustaw pustą tablicę w przypadku błędu
+          setPlans({});
         } finally {
           setLoading(false);
         }
@@ -148,6 +156,8 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
           <p className="text-red-700">{error}</p>
         </div>
       )}
+
+      {loading && <LoadingIndicator />}
 
       <div className={`select-wrapper ${selection.category ? 'active' : ''}`}>
         <label className="block text-wspia-gray font-medium mb-2">

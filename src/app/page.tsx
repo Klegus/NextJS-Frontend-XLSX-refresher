@@ -18,7 +18,8 @@ const MERGE_TOGGLE_KEY = 'planMergeEnabled';
 const FILTER_TOGGLE_KEY = 'planFilterEnabled';
 
 export default function HomePage() {
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [planLoading, setPlanLoading] = useState(false);
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
   const [selection, setSelection] = useState<Partial<SelectionState>>({});
   const [plan, setPlan] = useState<Plan | null>(null);
@@ -72,7 +73,7 @@ export default function HomePage() {
         console.error('Błąd podczas sprawdzania statusu serwera:', error);
         setError('Nie udało się sprawdzić statusu serwera');
       } finally {
-        setLoading(false);
+        setInitialLoading(false);
       }
     };
 
@@ -95,7 +96,7 @@ export default function HomePage() {
   useEffect(() => {
     const loadPlan = async () => {
       if (selection.plan && selection.group) {
-        setLoading(true);
+        setPlanLoading(true);
         try {
           const newPlan = await getPlan(selection.plan, selection.group);
           setPlan(newPlan);
@@ -104,7 +105,7 @@ export default function HomePage() {
           setError('Nie udało się załadować planu. Spróbuj ponownie później.');
           console.error('Failed to load plan:', err);
         } finally {
-          setLoading(false);
+          setPlanLoading(false);
         }
       } else {
         setPlan(null);
@@ -114,7 +115,7 @@ export default function HomePage() {
     loadPlan();
   }, [selection.plan, selection.group]);
 
-  if (loading) {
+  if (initialLoading) {
     return <LoadingSpinner />;
   }
 
@@ -147,6 +148,9 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200">
+      {/* Initial loading overlay */}
+      {initialLoading && <LoadingSpinner />}
+      
       <div className="max-w-[1400px] mx-auto py-12 relative">
         {/* Logo and Header */}
         <div className="text-center mb-12">
@@ -179,51 +183,54 @@ export default function HomePage() {
           </div>
 
           {/* Schedule Display */}
-          <div className={`${plan ? 'block px-4 lg:px-8' : 'hidden'} transition-all duration-500`}>
-            {loading ? (
-              <LoadingSpinner />
-            ) : (
+          <div className={`${plan ? 'block px-4 lg:px-8' : 'hidden'} transition-all duration-500 relative`}>
+            {planLoading && (
+              <div className="absolute inset-0 flex justify-center items-center bg-white/50 z-10 rounded-lg backdrop-blur-sm">
+                <div className="flex flex-col items-center">
+                  <div className="w-10 h-10 border-3 border-wspia-red border-t-transparent rounded-full animate-spin"></div>
+                  <p className="mt-2 text-wspia-gray text-sm font-medium">Ładowanie planu...</p>
+                </div>
+              </div>
+            )}
+            
+            {error && (
+              <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
+                <p className="text-red-700">{error}</p>
+              </div>
+            )}
+            
+            {plan && (
               <>
-                {error && (
-                  <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
-                    <p className="text-red-700">{error}</p>
-                  </div>
+                <CurrentLessonInfo
+                  currentTimeSlot={currentTimeSlot}
+                  nextTimeSlot={nextTimeSlot}
+                />
+                
+                {plan.category === 'st' && (
+                  <WeekControls
+                    onPrevWeek={() => handleWeekChange('prev')}
+                    onNextWeek={() => handleWeekChange('next')}
+                    currentWeek={currentWeek}
+                    isPrevDisabled={weekOffset === 0}
+                    isNextDisabled={weekOffset === 1}
+                    planHtml={plan.html}
+                    mergeEnabled={mergeEnabled}
+                    isFilteringEnabled={filterEnabled}
+                    onFilterToggle={handleFilterToggle}
+                    onMergeToggle={handleMergeToggle}
+                  />
                 )}
                 
-                {plan && (
-                  <>
-                    <CurrentLessonInfo
-                      currentTimeSlot={currentTimeSlot}
-                      nextTimeSlot={nextTimeSlot}
-                    />
-                    
-                    {plan.category === 'st' && (
-                      <WeekControls
-                        onPrevWeek={() => handleWeekChange('prev')}
-                        onNextWeek={() => handleWeekChange('next')}
-                        currentWeek={currentWeek}
-                        isPrevDisabled={weekOffset === 0}
-                        isNextDisabled={weekOffset === 1}
-                        planHtml={plan.html}
-                        mergeEnabled={mergeEnabled}
-                        isFilteringEnabled={filterEnabled}
-                        onFilterToggle={handleFilterToggle}
-                        onMergeToggle={handleMergeToggle}
-                      />
-                    )}
-                    
-                    <PlanDisplay
-                      plan={plan}
-                      currentWeek={currentWeek}
-                      onTimeSlotChange={(current, next) => {
-                        setCurrentTimeSlot(current);
-                        setNextTimeSlot(next);
-                      }}
-                      onFilterToggle={handleFilterToggle}
-                      onMergeToggle={handleMergeToggle}
-                    />
-                  </>
-                )}
+                <PlanDisplay
+                  plan={plan}
+                  currentWeek={currentWeek}
+                  onTimeSlotChange={(current, next) => {
+                    setCurrentTimeSlot(current);
+                    setNextTimeSlot(next);
+                  }}
+                  onFilterToggle={handleFilterToggle}
+                  onMergeToggle={handleMergeToggle}
+                />
               </>
             )}
           </div>
