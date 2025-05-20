@@ -18,7 +18,23 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   
+  // Uproszczona konfiguracja dla poprawnej obsługi przekierowań
   poweredByHeader: false,
+  
+  // Wyłączamy assetPrefix, który może powodować problemy z przekierowaniami
+  
+  // Bardziej stabilne ustawienia dla środowisk
+  env: {
+    NEXTAUTH_URL: process.env.NODE_ENV === 'production' ? 'https://dev.planinf.pl' : 'http://localhost:5000',
+    SITE_URL: process.env.NODE_ENV === 'production' ? 'https://dev.planinf.pl' : 'http://localhost:5000'
+  },
+  
+  // Przestajemy walczyć z nagłówkami - zostawić to dla Nginx
+  
+  // Uproszczona konfiguracja runtime
+  publicRuntimeConfig: {
+    host: process.env.NODE_ENV === 'production' ? 'https://dev.planinf.pl' : 'http://localhost:5000',
+  },
   webpack: (config, { dev, isServer }) => {
     // Aplikujemy obfuscator tylko dla produkcji i kodu klienta
     if (!dev && !isServer) {

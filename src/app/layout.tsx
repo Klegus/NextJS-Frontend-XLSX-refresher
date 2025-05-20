@@ -1,6 +1,7 @@
 import './globals.css'
 import { Inter } from 'next/font/google'
 import { LoadingBar } from '@/components/ui/LoadingBar'
+import { AuthProvider } from '@/components/auth/AuthProvider'
 
 const inter = Inter({ 
   subsets: ['latin', 'latin-ext'],
@@ -21,9 +22,11 @@ export default function RootLayout({
     <html lang="pl">
       <body className={`${inter.variable} font-sans antialiased`}>
         <LoadingBar />
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-          {children}
-        </div>
+        <AuthProvider>
+          <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+            {children}
+          </div>
+        </AuthProvider>
       </body>
     </html>
   )
