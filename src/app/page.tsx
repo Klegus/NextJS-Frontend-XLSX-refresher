@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Head from 'next/head';
 import { MaintenancePage } from '@/components/status/MaintenancePage';
 import { checkServerStatus, isMaintenanceMode as checkMaintenance } from '@/api/serverStatus';
 import { SelectionControls } from '@/components/schedule/SelectionControls';
@@ -11,7 +12,8 @@ import { WeekControls } from '@/components/schedule/WeekControls';
 import { CurrentLessonInfo } from '@/components/schedule/CurrentLessonInfo';
 import { getWeekRange, shouldShowNextWeek } from '@/lib/utils';
 import { Plan, SelectionState } from '@/types/schedule';
-import { getPlan } from '@/lib/api';
+import { getPlan, getMixedPlanGroups, getPlanMetadata } from '@/lib/api';
+import { mergeHTMLTables } from '@/lib/htmlMerger';
 
 // Stałe dla localStorage
 const MERGE_TOGGLE_KEY = 'planMergeEnabled';
@@ -23,6 +25,8 @@ export default function HomePage() {
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
   const [selection, setSelection] = useState<Partial<SelectionState>>({});
   const [plan, setPlan] = useState<Plan | null>(null);
+  const [isPlanMixed, setIsPlanMixed] = useState<boolean>(false);
+  const [planMetadata, setPlanMetadata] = useState<any>(null);
   const [currentWeek, setCurrentWeek] = useState(() => {
     const now = new Date();
     return getWeekRange(shouldShowNextWeek() ? new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000) : now);
@@ -95,7 +99,60 @@ export default function HomePage() {
 
   useEffect(() => {
     const loadPlan = async () => {
-      if (selection.plan && selection.group) {
+      // Only proceed if we have a plan selected
+      if (!selection.plan) {
+        setPlan(null);
+        return;
+      }
+
+      // Use the isPlanMixed state which is set from SelectionControls
+      console.log('Loading plan - isPlanMixed:', isPlanMixed, 'selection:', selection);
+
+      // For mixed plans - require BOTH groups to be selected
+      if (isPlanMixed) {
+        // Check that we have at least 2 groups and they are not empty strings
+        const validGroups = selection.selectedGroups?.filter(g => g && g.trim() !== '') || [];
+        if (validGroups.length >= 2) {
+          console.log('Loading mixed plan with valid groups:', validGroups); // Debug log
+          setPlanLoading(true);
+          try {
+            // Fetch HTML for each selected group
+            const htmlPerGroup = await getMixedPlanGroups(
+              selection.plan,
+              validGroups // Use validated groups
+            );
+            console.log('Received HTML for groups:', Object.keys(htmlPerGroup)); // Debug log
+
+            // Merge the HTML tables client-side
+            const mergedHtml = mergeHTMLTables(htmlPerGroup);
+            console.log('Merged HTML created'); // Debug log
+
+            setPlan({
+              id: `${selection.plan}-mixed`,
+              html: mergedHtml,
+              htmlPerGroup,
+              timestamp: new Date().toISOString(),
+              category: selection.category || null,
+              mixed: true
+            });
+            setError(null);
+          } catch (err) {
+            setError('Nie udało się załadować planu. Spróbuj ponownie później.');
+            console.error('Failed to load mixed plan:', err);
+          } finally {
+            setPlanLoading(false);
+          }
+        } else {
+          // Mixed plan but specialization not selected yet - clear plan and show message
+          console.log('Mixed plan but specialization not selected. Valid groups:', validGroups);
+          setPlan(null);
+          setError(null); // Clear any previous errors
+          setPlanLoading(false);
+        }
+      }
+      // For regular (non-mixed) plans with single group
+      else if (!isPlanMixed && selection.group) {
+        console.log('Loading regular plan for group:', selection.group);
         setPlanLoading(true);
         try {
           const newPlan = await getPlan(selection.plan, selection.group);
@@ -107,13 +164,14 @@ export default function HomePage() {
         } finally {
           setPlanLoading(false);
         }
-      } else {
+      } else if (!selection.group) {
+        // No group selected yet
         setPlan(null);
       }
     };
 
     loadPlan();
-  }, [selection.plan, selection.group]);
+  }, [selection.plan, selection.group, selection.selectedGroups, isPlanMixed]);
 
   if (initialLoading) {
     return <LoadingSpinner />;
@@ -123,8 +181,16 @@ export default function HomePage() {
     return <MaintenancePage />;
   }
 
-  const handleSelectionChange = (newSelection: Partial<SelectionState>) => {
+  const handleSelectionChange = (newSelection: Partial<SelectionState> & { planMixed?: boolean }) => {
+    console.log('Selection changed:', newSelection); // Debug log
     setSelection(newSelection);
+
+    // Save mixed state if provided
+    if (typeof newSelection.planMixed !== 'undefined') {
+      setIsPlanMixed(newSelection.planMixed);
+      console.log('Plan mixed state updated:', newSelection.planMixed);
+    }
+
     localStorage.setItem('schedule-selection', JSON.stringify(newSelection));
   };
 
@@ -146,8 +212,55 @@ export default function HomePage() {
     }
   };
 
+  // Generate dynamic page title
+  const pageTitle = selection.group
+    ? `Plan zajęć ${selection.group}${selection.specialization ? ` - ${selection.specialization}` : ''} | WSPA Lublin`
+    : 'Plan Zajęć WSPA Lublin - Nieoficjalny Rozkład Zajęć';
+
+  // Structured data for SEO
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Plan Zajęć WSPA Lublin",
+    "description": "Nieoficjalny plan zajęć Wyższej Szkoły Prawa i Administracji w Lublinie",
+    "url": "https://planinf.pl",
+    "applicationCategory": "EducationalApplication",
+    "operatingSystem": "Any",
+    "provider": {
+      "@type": "EducationalOrganization",
+      "name": "Wyższa Szkoła Prawa i Administracji w Lublinie",
+      "alternateName": "WSPA Lublin",
+      "url": "https://wspa.lublin.pl",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Lublin",
+        "addressCountry": "PL"
+      }
+    },
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "PLN"
+    }
+  };
+
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200">
+    <>
+      <Head>
+        <title>{pageTitle}</title>
+        <meta name="description" content={
+          selection.group
+            ? `Plan zajęć grupy ${selection.group} na WSPA w Lublinie. Sprawdź aktualny rozkład zajęć, sale i prowadzących.`
+            : 'Nieoficjalny plan zajęć WSPA Lublin. Sprawdź rozkład zajęć dla wszystkich kierunków i grup.'
+        } />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="canonical" href={`https://planinf.pl${selection.group ? `?group=${encodeURIComponent(selection.group)}` : ''}`} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        />
+      </Head>
+      <main className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200">
       {/* Initial loading overlay */}
       {initialLoading && <LoadingSpinner />}
       
@@ -162,7 +275,9 @@ export default function HomePage() {
             />
           </div>
           <h1 className="text-3xl font-bold text-gray-800 mb-4">
-            {selection.group ? `Plan zajęć - ${selection.group}` : 'Plan zajęć'}
+            {selection.group
+              ? `Plan zajęć - ${selection.group}${selection.specialization ? ` - ${selection.specialization}` : ''}`
+              : 'Plan zajęć'}
           </h1>
         </div>
 
@@ -192,13 +307,14 @@ export default function HomePage() {
                 </div>
               </div>
             )}
-            
+
             {error && (
               <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
                 <p className="text-red-700">{error}</p>
               </div>
             )}
-            
+
+
             {plan && (
               <>
                 <CurrentLessonInfo
@@ -206,7 +322,7 @@ export default function HomePage() {
                   nextTimeSlot={nextTimeSlot}
                 />
                 
-                {plan.category === 'st' && (
+                {plan && (
                   <WeekControls
                     onPrevWeek={() => handleWeekChange('prev')}
                     onNextWeek={() => handleWeekChange('next')}
@@ -218,6 +334,11 @@ export default function HomePage() {
                     isFilteringEnabled={filterEnabled}
                     onFilterToggle={handleFilterToggle}
                     onMergeToggle={handleMergeToggle}
+                    // Calendar subscription props
+                    planId={selection.plan}
+                    groupName={selection.group}
+                    selectedGroups={selection.selectedGroups}
+                    isMixedPlan={isPlanMixed}
                   />
                 )}
                 
@@ -240,7 +361,29 @@ export default function HomePage() {
         <div className="mt-12">
           <BlogSection />
         </div>
+
+        {/* SEO Footer */}
+        <footer className="mt-16 pt-8 pb-4 border-t border-gray-300">
+          <div className="text-center text-sm text-gray-600">
+            <p className="mb-2">
+              <strong>Nieoficjalny Plan Zajęć WSPA Lublin</strong> - działa za pozwoleniem uczelni
+            </p>
+            <p className="mb-2">
+              Wyższa Szkoła Prawa i Administracji w Lublinie | WSPA Lublin
+            </p>
+            <p className="text-xs">
+              Kierunki: Informatyka • Prawo • Administracja • Bezpieczeństwo Wewnętrzne
+            </p>
+            <p className="text-xs mt-2">
+              Studia stacjonarne i niestacjonarne • Licencjackie i magisterskie
+            </p>
+            <p className="mt-4 text-xs text-gray-500">
+              © {new Date().getFullYear()} - Narzędzie stworzone dla społeczności studenckiej WSPA
+            </p>
+          </div>
+        </footer>
       </div>
     </main>
+    </>
   );
 }

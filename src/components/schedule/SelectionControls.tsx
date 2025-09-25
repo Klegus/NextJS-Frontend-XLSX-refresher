@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getFaculties, getPlans } from '@/lib/api';
-import { SelectionState } from '@/types/schedule';
+import { SelectionState, PlanGroup } from '@/types/schedule';
 
 interface SelectionControlsProps {
   onSelectionChange: (selection: Partial<SelectionState>) => void;
@@ -41,12 +41,33 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [hasRestoredState, setHasRestoredState] = useState(false);
 
   const categories = [
     { value: "st", label: "Studia Stacjonarne" },
     { value: "nst", label: "Studia Niestacjonarne" },
     { value: "nst_puw", label: "Studia Niestacjonarne PUW" }
   ];
+
+  // Restore saved selection on initial mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedSelection = localStorage.getItem(LAST_SELECTION_KEY);
+      if (savedSelection) {
+        const parsed = JSON.parse(savedSelection);
+        console.log('Restoring saved selection on mount:', parsed);
+
+        // If this is a complete selection with mixed plan, notify parent
+        if (parsed.plan && parsed.planMixed && parsed.selectedGroups?.length > 0) {
+          console.log('Notifying parent about restored mixed plan selection');
+          onSelectionChange(parsed);
+        } else if (parsed.plan && parsed.group) {
+          console.log('Notifying parent about restored regular plan selection');
+          onSelectionChange(parsed);
+        }
+      }
+    }
+  }, []); // Run only once on mount
 
   useEffect(() => {
     const loadFaculties = async () => {
@@ -67,16 +88,42 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
     };
     loadFaculties();
   }, [selection.category]);
-  const renderGroups = () => {
+  const renderGroups = (filterType?: 'base' | 'specialization') => {
     if (!selection.plan || !plans[selection.plan]) {
       return <option value="">Najpierw wybierz plan</option>;
     }
 
     const selectedPlan = plans[selection.plan];
+    const groups = Array.isArray(selectedPlan.groups)
+      ? selectedPlan.groups
+      : Object.keys(selectedPlan.groups || {});
+
+    // Filter groups based on type if specified
+    let filteredGroups = groups;
+    if (filterType === 'base') {
+      // Base groups are those that start with "GRUPA X" pattern (where X is a number)
+      // and don't have "Sp." prefix
+      filteredGroups = groups.filter(g => {
+        const normalized = g.toLowerCase();
+        const hasSpPrefix = g.includes('Sp.');
+        const isBaseGroup = normalized.match(/^grupa \d+/) !== null;
+        return isBaseGroup && !hasSpPrefix;
+      });
+    } else if (filterType === 'specialization') {
+      // Show specializations (those with "Sp." prefix)
+      // Exclude base groups (those that match "GRUPA X" pattern at the start)
+      filteredGroups = groups.filter(g => {
+        const normalized = g.toLowerCase();
+        const hasSpPrefix = g.includes('Sp.');
+        const isBaseGroup = normalized.match(/^grupa \d+/) !== null;
+        return hasSpPrefix || !isBaseGroup;
+      });
+    }
+
     return (
       <>
-        <option value="">Wybierz grupę</option>
-        {Object.keys(selectedPlan.groups).map(groupName => (
+        {filterType !== 'specialization' && <option value="">Wybierz grupę</option>}
+        {filteredGroups.map(groupName => (
           <option key={groupName} value={groupName}>
             {groupName}
           </option>
@@ -92,6 +139,42 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
           const data = await getPlans(selection.category, selection.faculty);
           setPlans(data);
           setError(null);
+
+          // After plans are loaded, restore the mixed state if needed
+          if (!hasRestoredState && selection.plan && data[selection.plan]) {
+            const planData = data[selection.plan];
+
+            // Check if this is a mixed plan
+            if (planData.mixed) {
+              console.log('Restoring mixed plan state for:', selection.plan);
+
+              // Restore the full selection with mixed state
+              const restoredSelection = {
+                ...selection,
+                planMixed: true,
+                // Ensure selectedGroups is properly restored
+                selectedGroups: selection.selectedGroups ||
+                  (selection.group && selection.specialization
+                    ? [selection.group, selection.specialization]
+                    : [])
+              };
+
+              // Notify parent component about the restored mixed state
+              onSelectionChange(restoredSelection);
+              setSelection(restoredSelection);
+              setHasRestoredState(true);
+            } else if (selection.planMixed && !planData.mixed) {
+              // Clear mixed state if plan is not actually mixed
+              const cleanedSelection = {
+                ...selection,
+                planMixed: false,
+                selectedGroups: []
+              };
+              onSelectionChange(cleanedSelection);
+              setSelection(cleanedSelection);
+              setHasRestoredState(true);
+            }
+          }
         } catch (err) {
           console.error('Error loading plans:', err);
           setError('Nie udało się załadować planów');
@@ -102,26 +185,42 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
       }
     };
     loadPlans();
-  }, [selection.category, selection.faculty]);
+  }, [selection.category, selection.faculty, hasRestoredState]);
 
   const handleSelectionChange = (field: keyof SelectionState, value: string) => {
     const newSelection = { ...selection, [field]: value };
-    
+
     // Reset dependent fields
     if (field === 'category') {
       delete newSelection.faculty;
       delete newSelection.plan;
       delete newSelection.group;
+      delete newSelection.specialization;
+      delete newSelection.selectedGroups;
+      delete newSelection.planMixed;
     } else if (field === 'faculty') {
       delete newSelection.plan;
       delete newSelection.group;
+      delete newSelection.specialization;
+      delete newSelection.selectedGroups;
+      delete newSelection.planMixed;
     } else if (field === 'plan') {
       delete newSelection.group;
+      delete newSelection.specialization;
+      delete newSelection.selectedGroups;
+
+      // Check if the selected plan is mixed and set the flag immediately
+      if (value && plans[value]) {
+        newSelection.planMixed = plans[value].mixed || false;
+        console.log(`Plan ${value} selected, mixed: ${newSelection.planMixed}`);
+      } else {
+        delete newSelection.planMixed;
+      }
     }
 
     setSelection(newSelection);
     onSelectionChange(newSelection);
-    
+
     // Save selection to localStorage
     if (typeof window !== 'undefined') {
       localStorage.setItem(LAST_SELECTION_KEY, JSON.stringify(newSelection));
@@ -216,18 +315,76 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
       )}
 
       {selection.plan && (
-        <div className="select-wrapper animate-slideDown">
-          <label className="block text-wspia-gray font-medium mb-2">
-            Wybierz grupę:
-          </label>
-          <select
-            className="w-full p-3 border rounded-lg shadow-sm focus:border-wspia-red focus:ring-1 focus:ring-wspia-red"
-            value={selection.group || ''}
-            onChange={(e) => handleSelectionChange('group', e.target.value)}
-          >
-            {renderGroups()}
-          </select>
-        </div>
+        <>
+          <div className="select-wrapper animate-slideDown">
+            <label className="block text-wspia-gray font-medium mb-2">
+              Wybierz grupę:
+            </label>
+            <select
+              className="w-full p-3 border rounded-lg shadow-sm focus:border-wspia-red focus:ring-1 focus:ring-wspia-red"
+              value={selection.group || ''}
+              onChange={(e) => {
+                const isMixed = plans[selection.plan]?.mixed || false;
+                if (isMixed) {
+                  // For mixed plans, don't set selectedGroups yet - wait for specialization
+                  const newSelection = {
+                    ...selection,
+                    group: e.target.value,
+                    specialization: '',
+                    selectedGroups: [], // Clear selectedGroups until specialization is chosen
+                    planMixed: true // Keep mixed state
+                  };
+                  setSelection(newSelection);
+                  onSelectionChange(newSelection);
+                } else {
+                  // For normal plans, just update the group
+                  const newSelection = {
+                    ...selection,
+                    group: e.target.value,
+                    // Don't override planMixed if it's already set
+                    planMixed: selection.planMixed !== undefined ? selection.planMixed : false
+                  };
+                  setSelection(newSelection);
+                  onSelectionChange(newSelection);
+                }
+              }}
+            >
+              {plans[selection.plan]?.mixed ? renderGroups('base') : renderGroups()}
+            </select>
+          </div>
+
+          {/* Show specialization dropdown for mixed plans */}
+          {plans[selection.plan]?.mixed && selection.group && (
+            <div className="select-wrapper animate-slideDown mt-4">
+              <label className="block text-wspia-gray font-medium mb-2">
+                Wybierz specjalizację:
+              </label>
+              <select
+                className="w-full p-3 border rounded-lg shadow-sm focus:border-wspia-red focus:ring-1 focus:ring-wspia-red"
+                value={selection.specialization || ''}
+                onChange={(e) => {
+                  const newSelection = {
+                    ...selection,
+                    specialization: e.target.value,
+                    // For mixed plans, only set selectedGroups when specialization is actually selected
+                    selectedGroups: e.target.value && e.target.value.trim() !== ''
+                      ? [selection.group, e.target.value]
+                      : [], // Empty array if no specialization selected
+                    planMixed: true // Keep mixed state
+                  };
+                  setSelection(newSelection);
+                  onSelectionChange(newSelection);
+                  if (typeof window !== 'undefined') {
+                    localStorage.setItem(LAST_SELECTION_KEY, JSON.stringify(newSelection));
+                  }
+                }}
+              >
+                <option value="">Wybierz specjalizację</option>
+                {renderGroups('specialization')}
+              </select>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

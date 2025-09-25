@@ -1,3 +1,6 @@
+import React from 'react';
+import { showToast } from '@/components/ui/toast';
+
 interface WeekControlsProps {
     onPrevWeek: () => void;
     onNextWeek: () => void;
@@ -9,6 +12,11 @@ interface WeekControlsProps {
     isFilteringEnabled?: boolean; // Informacja, czy filtrowanie jest włączone
     onFilterToggle?: (value: boolean) => void; // Callback do zmiany stanu filtrowania
     onMergeToggle?: (value: boolean) => void; // Callback do zmiany stanu łączenia komórek
+    // Calendar subscription props
+    planId?: string; // ID planu dla subskrypcji
+    groupName?: string; // Nazwa grupy dla subskrypcji
+    selectedGroups?: string[]; // Lista wybranych grup (dla planów mieszanych)
+    isMixedPlan?: boolean; // Czy to plan mieszany
   }
   
   export const WeekControls: React.FC<WeekControlsProps> = ({
@@ -21,13 +29,111 @@ interface WeekControlsProps {
     mergeEnabled = true,
     isFilteringEnabled = false,
     onFilterToggle,
-    onMergeToggle
+    onMergeToggle,
+    // Calendar subscription props
+    planId,
+    groupName,
+    selectedGroups,
+    isMixedPlan = false
   }) => {
     const formatDate = (date: Date) => {
       return date.toLocaleDateString('pl-PL', {
         day: '2-digit',
         month: '2-digit',
       });
+    };
+
+    // Generate calendar subscription URL
+    const generateSubscriptionUrl = (): string | null => {
+      if (!planId) return null;
+
+      let groupData: string;
+
+      if (isMixedPlan && selectedGroups && selectedGroups.length > 0) {
+        // For mixed plans, join selected groups with '+'
+        groupData = selectedGroups.join('+');
+      } else if (groupName) {
+        // For regular plans, use the single group name
+        groupData = groupName;
+      } else {
+        return null;
+      }
+
+      // Encode the group data for URL
+      const encodedGroupData = encodeURIComponent(groupData);
+
+      // Use the same protocol as the current page (http or https)
+      const protocol = window.location.protocol;
+      const host = window.location.host;
+
+      return `${protocol}//${host}/api/calendar/subscribe/${planId}/${encodedGroupData}`;
+    };
+
+    const handleCalendarSubscription = () => {
+      const subscriptionUrl = generateSubscriptionUrl();
+
+      if (!subscriptionUrl) {
+        console.error('Cannot generate subscription URL - missing planId or group data');
+        alert('Nie można wygenerować linku subskrypcji - brak wymaganych danych planu.');
+        return;
+      }
+
+      try {
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+        if (isLocalhost) {
+          // For localhost, provide manual instructions
+          if (navigator.clipboard) {
+            navigator.clipboard.writeText(subscriptionUrl);
+          }
+
+          alert(`Subskrypcja kalendarza na localhost:\n\n` +
+                `Link został skopiowany do schowka:\n${subscriptionUrl}\n\n` +
+                `Instrukcja dla Apple Calendar:\n` +
+                `1. Otwórz Kalendarz\n` +
+                `2. Plik → Nowa subskrypcja kalendarza\n` +
+                `3. Wklej link HTTP (nie webcal)\n\n` +
+                `Instrukcja dla Google Calendar:\n` +
+                `1. Otwórz calendar.google.com\n` +
+                `2. + obok "Inne kalendarze"\n` +
+                `3. "Z adresu URL"\n` +
+                `4. Wklej link`);
+        } else {
+          // For production, use webcal://
+          const webcalUrl = subscriptionUrl.replace(/^https?:/, 'webcal:');
+          window.location.href = webcalUrl;
+
+          // Also copy URL to clipboard as fallback
+          if (navigator.clipboard) {
+            navigator.clipboard.writeText(subscriptionUrl)
+              .then(() => {
+                showToast({
+                  message: 'Otwieranie kalendarza... Link też skopiowany do schowka.',
+                  type: 'success'
+                });
+              })
+              .catch((err) => {
+                console.error('Failed to copy to clipboard:', err);
+              });
+          }
+        }
+      } catch (error) {
+        console.error('Error opening calendar subscription:', error);
+
+        // Fallback to copying URL to clipboard
+        const message = `Skopiuj ten link do swojej aplikacji kalendarza:\n${subscriptionUrl}`;
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(subscriptionUrl)
+            .then(() => {
+              alert(message + '\n\n✅ Link został skopiowany do schowka');
+            })
+            .catch(() => {
+              alert(`Skopiuj ten link do swojej aplikacji kalendarza:\n${subscriptionUrl}`);
+            });
+        } else {
+          alert(`Skopiuj ten link do swojej aplikacji kalendarza:\n${subscriptionUrl}`);
+        }
+      }
     };
   
     return (
@@ -59,20 +165,36 @@ interface WeekControlsProps {
         </div>
         
         {planHtml && (
-          <button
-            onClick={() => exportToCalendar(planHtml, currentWeek, mergeEnabled, isFilteringEnabled)}
-            className="px-4 py-2 text-wspia-red border-2 border-wspia-red rounded-lg hover:bg-wspia-red  transition-colors"
-          >
-            <span className="hidden sm:inline">Eksportuj do kalendarza</span>
-            <span className="sm:inline sm:hidden">Eksportuj</span>
-          </button>
+          <div className="flex gap-2">
+            {/* Calendar subscription button */}
+            <button
+              onClick={handleCalendarSubscription}
+              className="group px-4 py-2 bg-white text-red-600 font-semibold border-2 border-red-600 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+              title="Subskrybuj kalendarz (automatyczne aktualizacje)"
+              style={{
+                backgroundColor: 'white',
+                color: '#dc2626',
+                borderColor: '#dc2626'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#dc2626';
+                e.currentTarget.style.color = 'white';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'white';
+                e.currentTarget.style.color = '#dc2626';
+              }}
+            >
+              <span className="hidden sm:inline">📅 Subskrybuj kalendarz</span>
+              <span className="sm:hidden">📅 Subskrybuj</span>
+            </button>
+          </div>
         )}
       </div>
     );
   };
   
   // Funkcja do eksportu zajęć do kalendarza
-  import { showToast } from '@/components/ui/toast';
   
   const exportToCalendar = (planHtml: string, weekRange: { start: Date; end: Date }, mergeEnabled: boolean = true, isFilteringEnabled: boolean = false) => {
     try {
