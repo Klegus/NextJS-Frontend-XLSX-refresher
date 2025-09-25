@@ -77,11 +77,11 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
         if (isCensorshipEnabledGlobally) {
             html = censorLecturerNamesInHtml(html);
         }
-        
+
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
         const table = doc.querySelector('table');
-        
+
         if (!table) return html;
 
         const rows = table.querySelectorAll('tr');
@@ -94,7 +94,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                 const date = new Date(weekRange.start);
                 date.setDate(weekRange.start.getDate() + (index - 1));
                 const originalText = cell.textContent?.split('(')[0].trim() || '';
-                const formattedDate = date.toLocaleDateString('pl-PL', { 
+                const formattedDate = date.toLocaleDateString('pl-PL', {
                     day: '2-digit',
                     month: '2-digit'
                 });
@@ -102,11 +102,13 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
             }
         });
 
+        // Sprawdź czy są jakiekolwiek zajęcia w tym tygodniu
+        let hasAnyLessonsInWeek = false;
+
         // Filtruj wiersze z lekcjami
         for (let i = 1; i < rows.length; i++) {
             const row = rows[i];
             const cells = row.querySelectorAll('td');
-            let hasLessonsInWeek = false;
 
             cells.forEach((cell, index) => {
                 if (index === 0) return; // Pomijamy kolumnę z godzinami
@@ -127,12 +129,37 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                     if (!cellContent.includes(dateStr)) {
                         cell.innerHTML = '';
                     } else {
-                        hasLessonsInWeek = true;
+                        hasAnyLessonsInWeek = true;
                     }
                 }
             });
+        }
 
-            // Nie ukrywamy już całych wierszy, nawet jeśli nie ma lekcji w tym tygodniu
+        // Jeśli nie ma żadnych zajęć w tym tygodniu, zwróć komunikat
+        if (!hasAnyLessonsInWeek) {
+            const weekStartStr = weekRange.start.toLocaleDateString('pl-PL', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+            const weekEndStr = weekRange.end.toLocaleDateString('pl-PL', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+
+            return `
+                <div class="flex flex-col items-center justify-center py-16 px-4">
+                    <div class="text-6xl mb-4">📚</div>
+                    <h2 class="text-2xl font-bold text-gray-700 mb-2">Brak zajęć w tym tygodniu</h2>
+                    <p class="text-gray-500 text-center max-w-md">
+                        W tygodniu ${weekStartStr} - ${weekEndStr} nie ma zaplanowanych zajęć.
+                    </p>
+                    <p class="text-sm text-gray-400 mt-4">
+                        Użyj strzałek nawigacji, aby przejrzeć inne tygodnie.
+                    </p>
+                </div>
+            `;
         }
 
         return table.outerHTML;

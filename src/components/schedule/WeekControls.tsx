@@ -169,21 +169,8 @@ interface WeekControlsProps {
             {/* Calendar subscription button */}
             <button
               onClick={handleCalendarSubscription}
-              className="group px-4 py-2 bg-white text-red-600 font-semibold border-2 border-red-600 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+              className="px-4 py-2 bg-white text-red-600 font-semibold border-2 border-red-600 rounded-lg transition-all duration-200 shadow-sm hover:shadow-lg hover:bg-red-50 hover:text-red-700 hover:border-red-700"
               title="Subskrybuj kalendarz (automatyczne aktualizacje)"
-              style={{
-                backgroundColor: 'white',
-                color: '#dc2626',
-                borderColor: '#dc2626'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#dc2626';
-                e.currentTarget.style.color = 'white';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'white';
-                e.currentTarget.style.color = '#dc2626';
-              }}
             >
               <span className="hidden sm:inline">📅 Subskrybuj kalendarz</span>
               <span className="sm:hidden">📅 Subskrybuj</span>

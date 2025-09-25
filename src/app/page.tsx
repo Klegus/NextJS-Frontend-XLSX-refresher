@@ -195,7 +195,8 @@ export default function HomePage() {
   };
 
   const handleWeekChange = (direction: 'prev' | 'next') => {
-    if (direction === 'next' && weekOffset < 1) {
+    if (direction === 'next') {
+      // Usuń limit - pozwól przewijać do przodu bez ograniczeń
       setWeekOffset(prev => prev + 1);
       setCurrentWeek(prev => {
         const newDate = new Date(prev.start);
@@ -328,7 +329,7 @@ export default function HomePage() {
                     onNextWeek={() => handleWeekChange('next')}
                     currentWeek={currentWeek}
                     isPrevDisabled={weekOffset === 0}
-                    isNextDisabled={weekOffset === 1}
+                    isNextDisabled={false}  // Usuń limit - zawsze pozwól iść do przodu
                     planHtml={plan.html}
                     mergeEnabled={mergeEnabled}
                     isFilteringEnabled={filterEnabled}
