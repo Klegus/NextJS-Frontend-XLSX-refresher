@@ -12,7 +12,7 @@
 
 # testing
 /coverage
-
+kongo
 # next.js
 /.next/
 /out/
