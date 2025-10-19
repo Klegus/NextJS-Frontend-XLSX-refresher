@@ -58,10 +58,25 @@ export function mergeHTMLTables(htmlPerGroup: Record<string, string>): string {
     return 0;
   };
 
-  // Get day headers from first table (should be same for all)
-  const headerRow = tables[0].table.querySelector('tr');
-  const dayHeaders = Array.from(headerRow?.cells || []).map(cell => cell.innerHTML);
-  console.log('Day headers:', dayHeaders);
+  // Collect ALL unique day headers from ALL tables (for mixed plans with different column counts)
+  const allDayHeaders = new Set<string>();
+  const dayHeadersList: string[] = ['<b>Godziny</b>']; // Time column is always first
+
+  tables.forEach(({ table }) => {
+    const headerRow = table.querySelector('tr');
+    const headers = Array.from(headerRow?.cells || []);
+    // Skip first cell (time column), add the rest (day columns)
+    for (let i = 1; i < headers.length; i++) {
+      const dayHeader = headers[i].innerHTML;
+      if (!allDayHeaders.has(dayHeader)) {
+        allDayHeaders.add(dayHeader);
+        dayHeadersList.push(dayHeader);
+      }
+    }
+  });
+
+  const dayHeaders = dayHeadersList;
+  console.log('Collected day headers from all tables:', dayHeaders);
 
   // Collect all unique time slots from all tables
   const timeSlotMap = new Map<string, string>(); // normalized -> original HTML
@@ -122,16 +137,17 @@ export function mergeHTMLTables(htmlPerGroup: Record<string, string>): string {
         return;
       }
 
-      // Get the headers for this specific table (in case they're different)
+      // Get the headers for this specific table (they may have fewer days than the merged table)
       const tableHeaders = Array.from(table.querySelector('tr')?.cells || []).map(cell => cell.innerHTML);
 
-      // Process each day column
+      // Process each day column (start from index 1 to skip time column)
       for (let colIdx = 1; colIdx < row.cells.length && colIdx < tableHeaders.length; colIdx++) {
         const cell = row.cells[colIdx];
         const content = cell.innerHTML.trim();
         const dayHeader = tableHeaders[colIdx];
 
         if (content && content !== '&nbsp;' && content !== '') {
+          // Find this day in the merged structure (it should exist since we collected all unique days)
           const mergedCell = dayMap.get(dayHeader);
           if (mergedCell) {
             // Check if this exact content already exists (avoid duplicates)
@@ -140,6 +156,8 @@ export function mergeHTMLTables(htmlPerGroup: Record<string, string>): string {
               mergedCell.groups.push(group);
               console.log(`Added content for ${group} at ${normalizedTime}, ${dayHeader}`);
             }
+          } else {
+            console.warn(`Day header '${dayHeader}' not found in merged structure at time ${normalizedTime}`);
           }
         }
       }

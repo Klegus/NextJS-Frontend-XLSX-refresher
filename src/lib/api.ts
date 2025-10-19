@@ -68,7 +68,7 @@ export const getPlan = async (collection: string, group: string): Promise<Plan> 
 export const getMixedPlanGroups = async (
   collection: string,
   groups: string[]
-): Promise<Record<string, string>> => {
+): Promise<{ htmls: Record<string, string>; timestamp: string; category?: string }> => {
   try {
     console.log('Fetching mixed plan for collection:', collection, 'groups:', groups);
 
@@ -87,8 +87,12 @@ export const getMixedPlanGroups = async (
       });
     }
 
-    // Backend returns group_htmls which is already a Record<string, string>
-    return data.group_htmls || {};
+    // Return both the HTML data and timestamp
+    return {
+      htmls: data.group_htmls || {},
+      timestamp: data.timestamp,
+      category: data.category
+    };
   } catch (error) {
     console.error('Error fetching mixed plan groups:', error);
     // Fallback to fetching groups individually if POST endpoint fails
@@ -97,18 +101,35 @@ export const getMixedPlanGroups = async (
         const { data } = await api.get(`/plan/${collection}/${group}`);
         return {
           group,
-          html: data.plan_html || data.html || data
+          html: data.plan_html || data.html || data,
+          timestamp: data.timestamp,
+          category: data.category
         };
       });
 
       const results = await Promise.all(promises);
       const htmlPerGroup: Record<string, string> = {};
-      results.forEach(({ group, html }) => {
+      let timestamp = '';
+      let category = '';
+
+      results.forEach(({ group, html, timestamp: ts, category: cat }) => {
         if (html) {
           htmlPerGroup[group] = html;
         }
+        // Use the first timestamp and category found
+        if (ts && !timestamp) {
+          timestamp = ts;
+        }
+        if (cat && !category) {
+          category = cat;
+        }
       });
-      return htmlPerGroup;
+
+      return {
+        htmls: htmlPerGroup,
+        timestamp: timestamp || new Date().toISOString(),
+        category
+      };
     } catch (fallbackError) {
       console.error('Fallback also failed:', fallbackError);
       throw fallbackError;

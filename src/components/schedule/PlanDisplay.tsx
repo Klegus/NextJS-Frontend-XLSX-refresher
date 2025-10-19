@@ -52,8 +52,9 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
     });
     
     // Check if censorship is enabled globally via environment variable
-    const isCensorshipEnabledGlobally = typeof process !== 'undefined' && 
-                                       process.env.NEXT_PUBLIC_ENABLE_CENSORSHIP === 'true';
+    // W Next.js zmienne NEXT_PUBLIC_ są wbudowywane podczas buildu
+    // Domyślnie cenzura jest WŁĄCZONA, wyłącza się tylko gdy zmienna === 'false'
+    const isCensorshipEnabledGlobally = process.env.NEXT_PUBLIC_ENABLE_CENSORSHIP !== 'false';
     
     // Dodajemy stan dla kontroli cenzury i modala, tylko jeśli cenzura jest włączona globalnie
     const [censorshipDisabled, setCensorshipDisabled] = useState(() => {

@@ -7,7 +7,9 @@ export function filterPlanForCurrentWeek(
   category: string | null
 ): string {
   // Apply name censorship only if it's enabled globally via environment variable
-  if (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_ENABLE_CENSORSHIP === 'true') {
+  // W Next.js zmienne NEXT_PUBLIC_ są wbudowywane podczas buildu
+  // Domyślnie cenzura jest WŁĄCZONA, wyłącza się tylko gdy zmienna === 'false'
+  if (process.env.NEXT_PUBLIC_ENABLE_CENSORSHIP !== 'false') {
     planHtml = censorLecturerNamesInHtml(planHtml);
   }
   

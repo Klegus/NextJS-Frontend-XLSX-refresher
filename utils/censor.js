@@ -3,11 +3,22 @@
  * @returns {boolean} - Czy cenzura jest włączona
  */
 export function isCensorshipEnabled() {
-  // Sprawdź, czy cenzura jest w ogóle wymagana w aplikacji
-  // Jeśli zmienna środowiskowa NEXT_PUBLIC_ENABLE_CENSORSHIP nie jest ustawiona na "true",
-  // cenzura jest całkowicie wyłączona
-  var censoringEnabled = typeof process !== 'undefined' &&
-                        process.env.NEXT_PUBLIC_ENABLE_CENSORSHIP === 'true';
+  // Sprawdź, czy cenzura jest wyłączona w aplikacji
+  // Domyślnie cenzura jest WŁĄCZONA dla bezpieczeństwa danych osobowych
+  // Można ją wyłączyć ustawiając NEXT_PUBLIC_ENABLE_CENSORSHIP na "false"
+
+  // W Next.js zmienne NEXT_PUBLIC_ są wbudowywane w build jako literały
+  // Używamy try-catch dla bezpieczeństwa
+  let censoringEnabled = true; // DOMYŚLNIE WŁĄCZONA
+  try {
+    // Cenzura jest wyłączona tylko gdy explicite ustawiona na "false"
+    if (process.env.NEXT_PUBLIC_ENABLE_CENSORSHIP === 'false') {
+      censoringEnabled = false;
+    }
+  } catch (e) {
+    // Jeśli process jest undefined, pozostaw cenzurę włączoną
+    censoringEnabled = true;
+  }
 
   if (!censoringEnabled) {
     return false;

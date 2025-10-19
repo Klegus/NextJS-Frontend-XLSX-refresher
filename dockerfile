@@ -10,8 +10,10 @@ RUN apk add --no-cache python3 make g++
 COPY package*.json ./
 
 # Ustaw zmienne środowiskowe dla czasu budowania
-ARG NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_API_BASE_URL
+ARG API_BASE_URL
+ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
+ENV API_BASE_URL=$API_BASE_URL
 
 # Install dependencies
 RUN npm ci
@@ -38,7 +40,10 @@ COPY --from=builder /app/next.config.ts ./
 # Można również skopiować plik .env.production jeśli istnieje
 
 # Ustaw zmienne środowiskowe dla czasu uruchomienia
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_API_BASE_URL
+ARG API_BASE_URL
+ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
+ENV API_BASE_URL=$API_BASE_URL
 ENV NODE_ENV=production
 ENV PORT=5000
 

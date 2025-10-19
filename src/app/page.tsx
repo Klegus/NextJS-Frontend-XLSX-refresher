@@ -117,22 +117,22 @@ export default function HomePage() {
           setPlanLoading(true);
           try {
             // Fetch HTML for each selected group
-            const htmlPerGroup = await getMixedPlanGroups(
+            const response = await getMixedPlanGroups(
               selection.plan,
               validGroups // Use validated groups
             );
-            console.log('Received HTML for groups:', Object.keys(htmlPerGroup)); // Debug log
+            console.log('Received HTML for groups:', Object.keys(response.htmls)); // Debug log
 
             // Merge the HTML tables client-side
-            const mergedHtml = mergeHTMLTables(htmlPerGroup);
+            const mergedHtml = mergeHTMLTables(response.htmls);
             console.log('Merged HTML created'); // Debug log
 
             setPlan({
               id: `${selection.plan}-mixed`,
               html: mergedHtml,
-              htmlPerGroup,
-              timestamp: new Date().toISOString(),
-              category: selection.category || null,
+              htmlPerGroup: response.htmls,
+              timestamp: response.timestamp,
+              category: response.category || selection.category || null,
               mixed: true
             });
             setError(null);
@@ -358,28 +358,33 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Blog Section */}
-        <div className="mt-12">
+        {/* Blog Section - Clean Card */}
+        <div className="mt-8">
           <BlogSection />
         </div>
 
-        {/* SEO Footer */}
-        <footer className="mt-16 pt-8 pb-4 border-t border-gray-300">
-          <div className="text-center text-sm text-gray-600">
-            <p className="mb-2">
-              <strong>Nieoficjalny Plan Zajęć WSPA Lublin</strong> - działa za pozwoleniem uczelni
-            </p>
-            <p className="mb-2">
-              Wyższa Szkoła Prawa i Administracji w Lublinie | WSPA Lublin
-            </p>
-            <p className="text-xs">
-              Kierunki: Informatyka • Prawo • Administracja • Bezpieczeństwo Wewnętrzne
-            </p>
-            <p className="text-xs mt-2">
-              Studia stacjonarne i niestacjonarne • Licencjackie i magisterskie
-            </p>
-            <p className="mt-4 text-xs text-gray-500">
-              © {new Date().getFullYear()} - Narzędzie stworzone dla społeczności studenckiej WSPA
+        {/* Minimalist Footer */}
+        <footer className="mt-16 py-12 border-t border-gray-100">
+          <div className="text-center space-y-3">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-gray-900">
+                Plan Zajęć WSPA Lublin
+              </p>
+              <p className="text-xs text-gray-500">
+                Nieoficjalne narzędzie • Działa za pozwoleniem uczelni
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-2 text-xs text-gray-400">
+              <span>Informatyka</span>
+              <span className="text-gray-300">•</span>
+              <span>Prawo</span>
+              <span className="text-gray-300">•</span>
+              <span>Administracja</span>
+              <span className="text-gray-300">•</span>
+              <span>Bezpieczeństwo</span>
+            </div>
+            <p className="text-xs text-gray-400">
+              © {new Date().getFullYear()} • Stworzone dla społeczności WSPA
             </p>
           </div>
         </footer>

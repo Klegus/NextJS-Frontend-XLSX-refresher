@@ -43,7 +43,7 @@ export async function GET(
     // Pobierz plan z backendu
     // Use server-side env var for API routes (not embedded in build)
     // Fallback chain: API_BASE_URL -> NEXT_PUBLIC_API_BASE_URL -> Docker network IP
-    const backendUrl = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://172.20.0.20';
+    const backendUrl = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://172.30.0.20';
     let planData;
 
     if (isMixed) {
