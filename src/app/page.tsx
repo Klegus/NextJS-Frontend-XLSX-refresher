@@ -14,6 +14,7 @@ import { getWeekRange, shouldShowNextWeek } from '@/lib/utils';
 import { Plan, SelectionState } from '@/types/schedule';
 import { getPlan, getMixedPlanGroups, getPlanMetadata } from '@/lib/api';
 import { mergeHTMLTables } from '@/lib/htmlMerger';
+import { PlanChanges } from '@/components/schedule/PlanChanges';
 
 // Stałe dla localStorage
 const MERGE_TOGGLE_KEY = 'planMergeEnabled';
@@ -35,6 +36,7 @@ export default function HomePage() {
   const [currentTimeSlot, setCurrentTimeSlot] = useState<string | null>(null);
   const [nextTimeSlot, setNextTimeSlot] = useState<string | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
+  const [showChanges, setShowChanges] = useState(false);
 
   // Dodajemy stan dla opcji filtrowania i łączenia komórek
   const [filterEnabled, setFilterEnabled] = useState(() => {
@@ -289,6 +291,13 @@ export default function HomePage() {
           </p>
         </header>
 
+        <PlanChanges
+          isOpen={showChanges}
+          onClose={() => setShowChanges(false)}
+          planId={selection.plan}
+          groupName={selection.group}
+        />
+
         {/* Main Content Grid */}
         <div className={`${
           plan
@@ -344,6 +353,7 @@ export default function HomePage() {
                   groupName={selection.group}
                   selectedGroups={selection.selectedGroups}
                   isMixedPlan={isPlanMixed}
+                  onShowChanges={() => setShowChanges(true)}
                 />
 
                 <div className="glass-card overflow-hidden">

@@ -321,74 +321,12 @@ function parseHtmlForEvents(planData: any, options: any): CalendarEvent[] {
       events.push(...parsedEvents);
     }
 
-    console.log(`Successfully parsed ${events.length} events from HTML`);
+    console.log(`Parsed ${events.length} total events`);
 
-    // Filter events to only include current week and next 2 weeks (3 weeks total)
-    const now = new Date();
-    let adjustedYear = now.getFullYear();
-    const adjustedMonth = now.getMonth() + 1;
-
-    // Apply workaround for system date being off
-    if (adjustedYear === 2025 && adjustedMonth === 9) {
-      adjustedYear = 2024;
-    }
-
-    const todayStart = new Date(adjustedYear, now.getMonth(), now.getDate());
-
-    // Calculate current week's Monday
-    const dayOfWeek = todayStart.getDay();
-    const currentMonday = new Date(todayStart);
-    const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday = 0, so subtract 6 to get to Monday
-    currentMonday.setDate(todayStart.getDate() - daysToSubtract);
-
-    // Calculate the end of 3-week period (Sunday of third week)
-    const thirdWeekSunday = new Date(currentMonday);
-    thirdWeekSunday.setDate(currentMonday.getDate() + 20); // Three weeks minus 1 day
-
-    console.log(`Filtering events between ${currentMonday.toISOString().split('T')[0]} and ${thirdWeekSunday.toISOString().split('T')[0]}`);
-
-    const filteredEvents = events.filter(event => {
-      const eventDateStr = event.startDate.split('T')[0];
-      const [eventYear, eventMonth, eventDay] = eventDateStr.split('-').map(Number);
-
-      // Apply same year adjustment to event dates
-      let adjustedEventYear = eventYear;
-      if (eventYear === 2025 && eventMonth >= 1 && eventMonth <= 8) {
-        // Events in Jan-Aug 2025 are actually for the 2024/2025 academic year
-        adjustedEventYear = 2025; // Keep as is - these are spring semester
-      } else if (eventYear === 2025 && eventMonth >= 9) {
-        // Events in Sep-Dec 2025 should be 2024 for current academic year
-        adjustedEventYear = 2024;
-      }
-
-      const eventDate = new Date(adjustedEventYear, eventMonth - 1, eventDay, 12, 0, 0);
-      const isInRange = eventDate >= currentMonday && eventDate <= thirdWeekSunday;
-
-      if (!isInRange) {
-        console.log(`Event excluded: ${event.title} on ${eventDateStr} -> ${adjustedEventYear}-${eventMonth}-${eventDay} (outside 3-week window)`);
-      } else {
-        console.log(`Event included: ${event.title} on ${adjustedEventYear}-${eventMonth}-${eventDay}`);
-      }
-
-      return isInRange;
-    });
-
-    console.log(`Filtered ${events.length} events to ${filteredEvents.length} events in 3-week window (current + next 2 weeks)`);
-
-    // Group similar events that occur at the same time on different days
-    const groupedEvents = groupSimilarEvents(filteredEvents);
-    console.log(`Grouped ${filteredEvents.length} events into ${groupedEvents.length} recurring events`);
-
-    // Debug: log first few events
-    if (groupedEvents.length > 0) {
-      console.log('First grouped event:', groupedEvents[0]);
-      console.log('Sample dates:', groupedEvents.slice(0, 3).map(e => ({
-        start: e.startDate,
-        end: e.endDate
-      })));
-    }
-
-    return groupedEvents;
+    // No date filtering — return ALL events from the plan.
+    // Calendar apps handle display of past/future events themselves.
+    // This also means the subscription always has the full semester schedule.
+    return events;
 
   } catch (error) {
     console.error('Error parsing HTML for events:', error);
@@ -400,130 +338,39 @@ function parseSingleHtmlTable(htmlContent: string): CalendarEvent[] {
   const events: CalendarEvent[] = [];
 
   try {
-    // Find the table content
     const tableMatch = htmlContent.match(/<table[^>]*>([\s\S]*?)<\/table>/i);
-    if (!tableMatch) {
-      console.log('No table found in HTML content');
-      return events;
-    }
+    if (!tableMatch) return events;
 
-    // Extract rows
     const rowMatches = tableMatch[1].match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi);
-    if (!rowMatches || rowMatches.length <= 1) {
-      console.log('No data rows found in table');
-      return events;
-    }
+    if (!rowMatches || rowMatches.length <= 1) return events;
 
-    // Parse header row to get day columns
+    // Parse header to get day names and their day-of-week numbers
     const headerRow = rowMatches[0];
     const headerCells = headerRow.match(/<th[^>]*>([\s\S]*?)<\/th>/gi) || [];
+    const dayCount = headerCells.length - 1;
 
-    // Extract dates from headers (format like "Pon (02.12)")
-    const dates: string[] = [];
-    const now = new Date();
+    // Map column index to expected day-of-week (0=Sun, 1=Mon, ..., 6=Sat)
+    const dayNameToNumber: Record<string, number> = {
+      'poniedziałek': 1, 'poniedzialek': 1,
+      'wtorek': 2,
+      'środa': 3, 'sroda': 3,
+      'czwartek': 4,
+      'piątek': 5, 'piatek': 5,
+      'sobota': 6,
+      'niedziela': 0,
+    };
 
-    // IMPORTANT: Handle potential system date issues
-    // If system reports year 2025 but we're actually in 2024, adjust
-    let currentYear = now.getFullYear();
-    const currentMonth = now.getMonth() + 1; // 1-based month
-    const currentDay = now.getDate();
-
-    // WORKAROUND for environment date issue
-    if (currentYear === 2025 && currentMonth === 9) {
-      // System says Sept 2025 but likely should be Sept 2024 for 2024/2025 academic year
-      currentYear = 2024;
-      console.log(`Date parsing: Adjusted year from 2025 to ${currentYear} for academic calendar`);
-    }
-
-    console.log(`Date parsing: Using date ${currentYear}-${currentMonth}-${currentDay}`);
-
+    const columnDayOfWeek: number[] = [];
     headerCells.forEach((cell, index) => {
-      if (index > 0) { // Skip first column (time)
-        const cellText = cell.replace(/<[^>]*>/g, '').trim();
-        const dateMatch = cellText.match(/\((\d{2})\.(\d{2})\)/);
-        if (dateMatch) {
-          const [, day, month] = dateMatch;
-          const dayNum = parseInt(day);
-          const monthNum = parseInt(month);
-
-          // Smart year detection based on academic calendar and current date
-          let yearToUse = currentYear;
-
-          // Create date object for this day/month in current year
-          const dateInCurrentYear = new Date(currentYear, monthNum - 1, dayNum);
-          const dateInNextYear = new Date(currentYear + 1, monthNum - 1, dayNum);
-          const dateInPrevYear = new Date(currentYear - 1, monthNum - 1, dayNum);
-
-          // Calculate days difference from today
-          const daysFromTodayCurrent = Math.floor((dateInCurrentYear.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-          const daysFromTodayNext = Math.floor((dateInNextYear.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-          const daysFromTodayPrev = Math.floor((dateInPrevYear.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-
-          // Choose the year that puts the date closest to today (within -7 to +14 days window)
-          if (Math.abs(daysFromTodayCurrent) <= 14) {
-            yearToUse = currentYear;
-          } else if (Math.abs(daysFromTodayPrev) <= 14) {
-            yearToUse = currentYear - 1;  // Date is from recent past
-          } else if (daysFromTodayNext >= -7 && daysFromTodayNext <= 14) {
-            yearToUse = currentYear + 1;  // Date is from near future in next year
-          } else {
-            // Fallback: use current year if date is reasonable
-            yearToUse = currentYear;
-          }
-
-          const finalDate = `${yearToUse}-${month}-${day}`;
-          dates.push(finalDate);
-          console.log(`Parsed date from header: ${cellText} -> ${finalDate} (${daysFromTodayCurrent} days from today)`);
-        }
+      if (index > 0) {
+        const text = cell.replace(/<[^>]*>/g, '').trim().toLowerCase().split(' ')[0].split('(')[0].trim();
+        columnDayOfWeek.push(dayNameToNumber[text] ?? -1);
       }
     });
 
-    // If no dates found in headers or incomplete week data, generate dates for current or next week
-    if (dates.length === 0 || dates.length < 5) {
-      console.log(`No or incomplete dates found in headers (found ${dates.length}), generating dates for current/next week`);
-
-      const today = new Date();
-      let adjustedYear = today.getFullYear();
-      const adjustedMonth = today.getMonth() + 1;
-
-      // Apply same workaround for system date
-      if (adjustedYear === 2025 && adjustedMonth === 9) {
-        adjustedYear = 2024;
-      }
-
-      // Create adjusted date
-      const adjustedToday = new Date(adjustedYear, today.getMonth(), today.getDate());
-      const dayOfWeek = adjustedToday.getDay();
-
-      // If it's Friday after 2 PM or weekend, show next week
-      let monday = new Date(adjustedToday);
-      if (dayOfWeek === 5 && adjustedToday.getHours() >= 14) { // Friday after 2 PM
-        monday.setDate(adjustedToday.getDate() - (dayOfWeek || 7) + 8); // Next Monday
-      } else if (dayOfWeek === 0 || dayOfWeek === 6) { // Weekend
-        monday.setDate(adjustedToday.getDate() - (dayOfWeek || 7) + 8); // Next Monday
-      } else {
-        monday.setDate(adjustedToday.getDate() - (dayOfWeek || 7) + 1); // This Monday
-      }
-
-      // Clear any partial dates and regenerate full week
-      dates.length = 0;
-
-      for (let i = 0; i < 5; i++) { // Monday to Friday
-        const date = new Date(monday);
-        date.setDate(monday.getDate() + i);
-        const day = date.getDate().toString().padStart(2, '0');
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
-        const year = date.getFullYear();
-        const dateStr = `${year}-${month}-${day}`;
-        dates.push(dateStr);
-        console.log(`Generated date for day ${i + 1}: ${dateStr}`);
-      }
-    }
-
-    console.log(`Final dates array for week (${dates.length} days): ${dates.join(', ')}`);
-
-    // Define time slots (standard WSPA schedule)
+    // Standard WSPA time slots
     const timeSlots = [
+      { start: "07:25", end: "08:10" },
       { start: "08:15", end: "09:00" },
       { start: "09:05", end: "09:50" },
       { start: "10:00", end: "10:45" },
@@ -541,195 +388,92 @@ function parseSingleHtmlTable(htmlContent: string): CalendarEvent[] {
       { start: "20:30", end: "21:15" }
     ];
 
-    // Process data rows
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const todayStr = `${currentYear}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getDate().toString().padStart(2,'0')}`;
+
     for (let rowIndex = 1; rowIndex < rowMatches.length && (rowIndex - 1) < timeSlots.length; rowIndex++) {
       const row = rowMatches[rowIndex];
       const timeSlot = timeSlots[rowIndex - 1];
-
-      // Extract cells from this row
       const cellMatches = row.match(/<td[^>]*>([\s\S]*?)<\/td>/gi) || [];
 
-      // Process each day column
-      for (let dayIndex = 0; dayIndex < dates.length && (dayIndex + 1) < cellMatches.length; dayIndex++) {
-        const cell = cellMatches[dayIndex + 1]; // +1 to skip time column
+      for (let dayIndex = 0; dayIndex < dayCount && (dayIndex + 1) < cellMatches.length; dayIndex++) {
+        const cell = cellMatches[dayIndex + 1];
         const cellContent = cell.replace(/<[^>]*>/g, '').trim();
+        if (!cellContent) continue;
 
-        if (cellContent && cellContent !== '') {
-          // Debug log for tracking which days have events
-          console.log(`Processing day ${dayIndex} (${dates[dayIndex]}): has content`);
-          // Extract subject title
-          let title = cellContent.split('\n')[0].trim();
-          if (title.length > 50) {
-            title = title.substring(0, 47) + '...';
-          }
+        const expectedDow = columnDayOfWeek[dayIndex]; // expected day-of-week for this column
 
-          // Extract location (room)
-          let location = 'WSPA Lublin';
-          const roomMatch = cellContent.match(/sal[aę]\s+([^,\s\n]+)/i);
-          if (roomMatch) {
-            location = `Sala ${roomMatch[1]}, WSPA Lublin`;
-          }
+        // Extract title
+        let title = cellContent.split('\n')[0].trim();
+        const titleMatch = title.match(/^(.+?)\s*[-–]\s*(laboratorium|wykład|warsztat|ćwiczenia|projekt|seminarium|konwersatorium|lektorat)/i);
+        if (titleMatch) title = `${titleMatch[1].trim()} - ${titleMatch[2]}`;
+        if (title.length > 60) title = title.substring(0, 57) + '...';
 
-          // Check for specific dates in content (format: "daty: 28.10, 04.11, 18.11")
-          const datesMatch = cellContent.match(/dat[ay]:?\s*([\d.,\s]+)/i);
+        // Extract room / location
+        let location = 'WSPA Lublin';
+        const roomMatch = cellContent.match(/sal[aę]\s+([^\s,\n]+)/i);
+        if (roomMatch) location = `Sala ${roomMatch[1]}, WSPA Lublin`;
+        if (/on-?line/i.test(cellContent)) location = 'Online';
 
-          if (datesMatch) {
-            // Event has specific dates - only create events for those dates
-            const specificDates = datesMatch[1].match(/\d{2}\.\d{2}/g) || [];
+        // Extract specific dates
+        const datesMatch = cellContent.match(/dat[yae]:?\s*([\d.,\s]+)/i);
+        if (!datesMatch) continue;
 
-            // Get current year and month context
-            const now = new Date();
-            const currentYear = now.getFullYear();
-            const currentMonth = now.getMonth() + 1;
+        const specificDates = datesMatch[1].match(/(\d{2})\.(\d{2})/g) || [];
 
-            // Get the expected day of week for this column (0=Sunday, 1=Monday, etc)
-            const expectedDayOfWeek = dayIndex + 1; // dayIndex 0 = Monday, so add 1
+        specificDates.forEach(dateStr => {
+          const [dayStr, monthStr] = dateStr.split('.');
+          const day = parseInt(dayStr);
+          const month = parseInt(monthStr);
+          const eventDate = `${currentYear}-${monthStr}-${dayStr}`;
 
-            specificDates.forEach(dateStr => {
-              const [day, month] = dateStr.split('.').map(Number);
+          // Only include if this date's day-of-week matches the column
+          const dateObj = new Date(currentYear, month - 1, day);
+          if (expectedDow >= 0 && dateObj.getDay() !== expectedDow) return;
 
-              // Get actual current date (not from headers)
-              const actualNow = new Date();
+          // Only include from today onwards
+          if (eventDate < todayStr) return;
 
-              // WORKAROUND: Handle system date potentially being off
-              // If we're supposedly in 2025-09, but academic year suggests 2024-2025
-              // we should treat dates accordingly
-              let actualCurrentYear = actualNow.getFullYear();
-              const actualCurrentMonth = actualNow.getMonth() + 1;
-
-              // If system says 2025-09 but we expect 2024-09 based on academic calendar
-              // This is a workaround for environment date issues
-              if (actualCurrentYear === 2025 && actualCurrentMonth === 9) {
-                // Likely should be 2024-09 for the 2024/2025 academic year
-                actualCurrentYear = 2024;
-              }
-
-              // Determine year intelligently based on academic calendar
-              let year = actualCurrentYear;
-
-              // Create potential dates
-              const currentYearDate = new Date(actualCurrentYear, month - 1, day);
-              const nextYearDate = new Date(actualCurrentYear + 1, month - 1, day);
-              const prevYearDate = new Date(actualCurrentYear - 1, month - 1, day);
-
-              // Calculate days from today for each possibility
-              const daysFromTodayCurrent = Math.floor((currentYearDate.getTime() - actualNow.getTime()) / (1000 * 60 * 60 * 24));
-              const daysFromTodayNext = Math.floor((nextYearDate.getTime() - actualNow.getTime()) / (1000 * 60 * 60 * 24));
-              const daysFromTodayPrev = Math.floor((prevYearDate.getTime() - actualNow.getTime()) / (1000 * 60 * 60 * 24));
-
-              // Academic year logic:
-              // - September to February: current academic year (Sep 2024 - Feb 2025)
-              // - March to August: preparing for next academic year
-
-              if (actualCurrentMonth >= 9 || actualCurrentMonth <= 2) {
-                // We're in the academic year (Sep-Feb)
-                if (month >= 9) {
-                  // September-December dates - use current calendar year
-                  year = actualCurrentYear;
-                } else if (month <= 6) {
-                  // January-June dates - use next calendar year (spring semester)
-                  year = actualCurrentYear + 1;
-                } else {
-                  // July-August - unusual, pick closest
-                  year = daysFromTodayCurrent < Math.abs(daysFromTodayNext) ? actualCurrentYear : actualCurrentYear + 1;
-                }
-              } else {
-                // We're in March-August (between academic years)
-                if (month >= 9) {
-                  // September-December dates - next academic year starting
-                  year = actualCurrentYear;
-                } else if (month <= 6) {
-                  // January-June dates - current calendar year (end of academic year)
-                  year = actualCurrentYear;
-                } else {
-                  // July-August - current year
-                  year = actualCurrentYear;
-                }
-              }
-
-              // Override if the calculated date is too far (more than 180 days away)
-              if (Math.abs(daysFromTodayCurrent) > 180) {
-                if (Math.abs(daysFromTodayNext) < Math.abs(daysFromTodayCurrent)) {
-                  year = actualCurrentYear + 1;
-                } else if (Math.abs(daysFromTodayPrev) < Math.abs(daysFromTodayCurrent)) {
-                  year = actualCurrentYear - 1;
-                }
-              }
-
-              // Validate that the chosen year gives us the correct day of week
-              const chosenDate = new Date(year, month - 1, day);
-              const actualDayOfWeek = chosenDate.getDay();
-
-              // If the date doesn't fall on the expected day of week, try adjusting the year
-              if (actualDayOfWeek !== expectedDayOfWeek) {
-                // Try next year
-                const nextYearDate = new Date(year + 1, month - 1, day);
-                if (nextYearDate.getDay() === expectedDayOfWeek) {
-                  year = year + 1;
-                  console.log(`Adjusted year to ${year} for date ${day}.${month} to match expected day of week`);
-                } else {
-                  // Try previous year
-                  const prevYearDate = new Date(year - 1, month - 1, day);
-                  if (prevYearDate.getDay() === expectedDayOfWeek) {
-                    year = year - 1;
-                    console.log(`Adjusted year to ${year} for date ${day}.${month} to match expected day of week`);
-                  } else {
-                    console.log(`Warning: Could not find correct year for ${day}.${month} to be on day ${expectedDayOfWeek}`);
-                  }
-                }
-              }
-
-              const finalDate = new Date(year, month - 1, day);
-              const daysFromToday = Math.floor((finalDate.getTime() - actualNow.getTime()) / (1000 * 60 * 60 * 24));
-              console.log(`Specific date ${day}.${month} assigned to year ${year} (${daysFromToday} days from today, ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][finalDate.getDay()]})`)
-
-              // Create date string for this specific occurrence
-              const eventDate = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-
-              // Create event for this specific date
-              events.push({
-                title,
-                startDate: `${eventDate}T${timeSlot.start}:00`,
-                endDate: `${eventDate}T${timeSlot.end}:00`,
-                location,
-                description: cellContent.replace(/\n/g, ' ').trim(),
-              });
-            });
-          } else {
-            // No specific dates - assume it happens every week in the current week
-            console.log(`Creating regular weekly event for ${dates[dayIndex]} at ${timeSlot.start}`);
-            events.push({
-              title,
-              startDate: `${dates[dayIndex]}T${timeSlot.start}:00`,
-              endDate: `${dates[dayIndex]}T${timeSlot.end}:00`,
-              location,
-              description: cellContent.replace(/\n/g, ' ').trim(),
-            });
-          }
-        }
+          events.push({
+            title,
+            startDate: `${eventDate}T${timeSlot.start}:00`,
+            endDate: `${eventDate}T${timeSlot.end}:00`,
+            location,
+            description: cellContent.replace(/\n/g, ' ').trim(),
+          });
+        });
       }
     }
 
-    console.log(`Successfully parsed ${events.length} events from HTML`);
+    // Merge consecutive time slots with identical content on the same date
+    // e.g. 3 slots of "Projekt" 11:45, 12:35, 13:30 -> one event 11:45-14:15
+    const mergedEvents: CalendarEvent[] = [];
+    const byDateAndDay = new Map<string, CalendarEvent[]>();
 
-    // Group similar events that occur at the same time on different days
-    const groupedEvents = groupSimilarEvents(events);
-    console.log(`Grouped ${events.length} events into ${groupedEvents.length} recurring events`);
+    events.forEach(e => {
+      const dateKey = e.startDate.split('T')[0];
+      const key = `${dateKey}|${e.title}|${e.location}`;
+      if (!byDateAndDay.has(key)) byDateAndDay.set(key, []);
+      byDateAndDay.get(key)!.push(e);
+    });
 
-    // Debug: log first few events
-    if (groupedEvents.length > 0) {
-      console.log('First grouped event:', groupedEvents[0]);
-      console.log('Sample dates:', groupedEvents.slice(0, 3).map(e => ({
-        start: e.startDate,
-        end: e.endDate
-      })));
-    }
+    byDateAndDay.forEach(group => {
+      group.sort((a, b) => a.startDate.localeCompare(b.startDate));
+      // Take earliest start and latest end
+      mergedEvents.push({
+        ...group[0],
+        endDate: group[group.length - 1].endDate,
+      });
+    });
 
-    return groupedEvents;
+    mergedEvents.sort((a, b) => a.startDate.localeCompare(b.startDate));
+    console.log(`Parsed ${events.length} raw -> ${mergedEvents.length} merged events (from today, day-matched)`);
+    return mergedEvents;
 
   } catch (error) {
     console.error('Error parsing HTML for events:', error);
-    return events; // Return empty array on error
+    return events;
   }
 }
 

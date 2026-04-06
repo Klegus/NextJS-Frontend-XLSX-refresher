@@ -7,16 +7,16 @@ interface WeekControlsProps {
     currentWeek: { start: Date; end: Date };
     isPrevDisabled: boolean;
     isNextDisabled: boolean;
-    planHtml?: string; // HTML planu, potrzebny do eksportu
-    mergeEnabled?: boolean; // Informacja, czy łączenie komórek jest włączone
-    isFilteringEnabled?: boolean; // Informacja, czy filtrowanie jest włączone
-    onFilterToggle?: (value: boolean) => void; // Callback do zmiany stanu filtrowania
-    onMergeToggle?: (value: boolean) => void; // Callback do zmiany stanu łączenia komórek
-    // Calendar subscription props
-    planId?: string; // ID planu dla subskrypcji
-    groupName?: string; // Nazwa grupy dla subskrypcji
-    selectedGroups?: string[]; // Lista wybranych grup (dla planów mieszanych)
-    isMixedPlan?: boolean; // Czy to plan mieszany
+    planHtml?: string;
+    mergeEnabled?: boolean;
+    isFilteringEnabled?: boolean;
+    onFilterToggle?: (value: boolean) => void;
+    onMergeToggle?: (value: boolean) => void;
+    planId?: string;
+    groupName?: string;
+    selectedGroups?: string[];
+    isMixedPlan?: boolean;
+    onShowChanges?: () => void;
   }
   
   export const WeekControls: React.FC<WeekControlsProps> = ({
@@ -34,7 +34,8 @@ interface WeekControlsProps {
     planId,
     groupName,
     selectedGroups,
-    isMixedPlan = false
+    isMixedPlan = false,
+    onShowChanges
   }) => {
     const formatDate = (date: Date) => {
       return date.toLocaleDateString('pl-PL', {
@@ -161,14 +162,26 @@ interface WeekControlsProps {
         </div>
 
         {planHtml && (
-          <button
-            onClick={handleCalendarSubscription}
-            className="px-3 py-1.5 text-sm"
-            title="Subskrybuj kalendarz"
-          >
-            <span className="hidden sm:inline">Subskrybuj kalendarz</span>
-            <span className="sm:hidden">Kalendarz</span>
-          </button>
+          <div className="flex gap-1.5">
+            {onShowChanges && (
+              <button
+                onClick={onShowChanges}
+                className="px-3 py-1.5 text-sm !border-amber-300 text-amber-700 hover:!bg-amber-50"
+                title="Historia zmian w planie"
+              >
+                <span className="hidden sm:inline">Zmiany</span>
+                <span className="sm:hidden">Zmiany</span>
+              </button>
+            )}
+            <button
+              onClick={handleCalendarSubscription}
+              className="px-3 py-1.5 text-sm"
+              title="Subskrybuj kalendarz"
+            >
+              <span className="hidden sm:inline">Kalendarz</span>
+              <span className="sm:hidden">Kalendarz</span>
+            </button>
+          </div>
         )}
       </div>
     );
