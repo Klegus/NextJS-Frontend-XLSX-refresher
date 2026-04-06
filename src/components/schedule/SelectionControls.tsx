@@ -90,6 +90,15 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
   }, [selection.category]);
   const renderGroups = (filterType?: 'base' | 'specialization') => {
     if (!selection.plan || !plans[selection.plan]) {
+      // If we have a saved group, show it as the only option while plans load
+      if (selection.group) {
+        return (
+          <>
+            <option value="">Wybierz grupę</option>
+            <option value={selection.group}>{selection.group}</option>
+          </>
+        );
+      }
       return <option value="">Najpierw wybierz plan</option>;
     }
 
@@ -139,6 +148,21 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
           const data = await getPlans(selection.category, selection.faculty);
           setPlans(data);
           setError(null);
+
+          // If saved plan doesn't exist in loaded plans, clear stale selection
+          if (selection.plan && !data[selection.plan]) {
+            console.log('Saved plan not found in API, clearing stale selection:', selection.plan);
+            const cleanedSelection = {
+              category: selection.category,
+              faculty: selection.faculty,
+            };
+            setSelection(cleanedSelection);
+            onSelectionChange(cleanedSelection);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem(LAST_SELECTION_KEY, JSON.stringify(cleanedSelection));
+            }
+            setHasRestoredState(true);
+          }
 
           // After plans are loaded, restore the mixed state if needed
           if (!hasRestoredState && selection.plan && data[selection.plan]) {
@@ -321,6 +345,7 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
               Wybierz grupę:
             </label>
             <select
+              key={`group-${selection.plan}-${plans[selection.plan!]?.groups ? Object.keys(plans[selection.plan!].groups).join(',') : 'loading'}`}
               className="w-full p-3 border rounded-lg shadow-sm focus:border-wspia-red focus:ring-1 focus:ring-wspia-red"
               value={selection.group || ''}
               onChange={(e) => {
@@ -360,6 +385,7 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
                 Wybierz specjalizację:
               </label>
               <select
+                key={`spec-${selection.plan}-${Object.keys(plans).length}`}
                 className="w-full p-3 border rounded-lg shadow-sm focus:border-wspia-red focus:ring-1 focus:ring-wspia-red"
                 value={selection.specialization || ''}
                 onChange={(e) => {
@@ -367,9 +393,9 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
                     ...selection,
                     specialization: e.target.value,
                     // For mixed plans, only set selectedGroups when specialization is actually selected
-                    selectedGroups: e.target.value && e.target.value.trim() !== ''
+                    selectedGroups: e.target.value && e.target.value.trim() !== '' && selection.group
                       ? [selection.group, e.target.value]
-                      : [], // Empty array if no specialization selected
+                      : [],
                     planMixed: true // Keep mixed state
                   };
                   setSelection(newSelection);

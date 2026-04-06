@@ -261,36 +261,43 @@ export default function HomePage() {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
       </Head>
-      <main className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200">
-      {/* Initial loading overlay */}
+      <main className="min-h-screen">
       {initialLoading && <LoadingSpinner />}
-      
-      <div className="max-w-[1400px] mx-auto py-12 relative">
-        {/* Logo and Header */}
-        <div className="text-center mb-12">
-          <div className="w-32 h-32 mx-auto mb-6 bg-white rounded-full shadow-lg overflow-hidden flex items-center justify-center">
+
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 relative">
+        {/* Header */}
+        <header className="text-center mb-10 animate-fade-in">
+          <div className="inline-flex items-center justify-center w-28 h-28 sm:w-32 sm:h-32 mb-6 bg-white rounded-3xl shadow-glass overflow-hidden ring-1 ring-black/[0.04]">
             <img
               src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSAvu7fXk3m4Lz5iwLKJHAPKlelKnT8CjI-Bg&s"
               alt="WSPiA Logo"
-              className="w-24 h-24 object-contain"
+              className="w-20 h-20 sm:w-24 sm:h-24 object-contain"
             />
           </div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-4">
-            {selection.group
-              ? `Plan zajęć - ${selection.group}${selection.specialization ? ` - ${selection.specialization}` : ''}`
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-ink mb-1.5">
+            {selection.faculty
+              ? selection.faculty
               : 'Plan zajęć'}
           </h1>
-        </div>
+          {selection.group && (
+            <p className="text-base sm:text-lg text-ink-muted font-medium mt-1">
+              {selection.group}{selection.specialization ? ` · ${selection.specialization}` : ''}
+            </p>
+          )}
+          <p className="text-xs text-ink-muted/50 mt-2 tracking-widest uppercase font-medium">
+            WSPA Lublin · {new Date().getMonth() >= 9 ? `${new Date().getFullYear()}/${new Date().getFullYear() + 1}` : `${new Date().getFullYear() - 1}/${new Date().getFullYear()}`}
+          </p>
+        </header>
 
         {/* Main Content Grid */}
         <div className={`${
-          plan 
-            ? "grid grid-cols-1 lg:grid-cols-[300px_1fr]" 
+          plan
+            ? "grid grid-cols-1 lg:grid-cols-[280px_1fr]"
             : "flex justify-center"
-        } gap-8 max-w-full relative`}>
+        } gap-6 max-w-full relative`}>
           {/* Selection Controls */}
-          <div className="transition-all duration-500 px-4 lg:px-0">
-            <div className="bg-white rounded-lg shadow-lg p-6 w-full sticky top-4">
+          <div className="transition-all duration-500">
+            <div className="glass-card p-5 w-full sticky top-4">
               <SelectionControls
                 onSelectionChange={handleSelectionChange}
                 initialSelection={selection}
@@ -299,92 +306,79 @@ export default function HomePage() {
           </div>
 
           {/* Schedule Display */}
-          <div className={`${plan ? 'block px-4 lg:px-8' : 'hidden'} transition-all duration-500 relative`}>
+          <div className={`${plan ? 'block' : 'hidden'} transition-all duration-500 relative`}>
             {planLoading && (
-              <div className="absolute inset-0 flex justify-center items-center bg-white/50 z-10 rounded-lg backdrop-blur-sm">
+              <div className="absolute inset-0 flex justify-center items-center bg-white/60 z-10 rounded-2xl backdrop-blur-md">
                 <div className="flex flex-col items-center">
-                  <div className="w-10 h-10 border-3 border-wspia-red border-t-transparent rounded-full animate-spin"></div>
-                  <p className="mt-2 text-wspia-gray text-sm font-medium">Ładowanie planu...</p>
+                  <div className="w-8 h-8 border-2 border-wspia-red border-t-transparent rounded-full animate-spin"></div>
+                  <p className="mt-3 text-ink-muted text-sm">Ładowanie planu...</p>
                 </div>
               </div>
             )}
 
             {error && (
-              <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
-                <p className="text-red-700">{error}</p>
+              <div className="bg-red-50/80 backdrop-blur-sm border border-red-200 rounded-xl p-4 mb-4">
+                <p className="text-red-700 text-sm">{error}</p>
               </div>
             )}
 
-
             {plan && (
-              <>
+              <div className="space-y-4">
                 <CurrentLessonInfo
                   currentTimeSlot={currentTimeSlot}
                   nextTimeSlot={nextTimeSlot}
                 />
-                
-                {plan && (
-                  <WeekControls
-                    onPrevWeek={() => handleWeekChange('prev')}
-                    onNextWeek={() => handleWeekChange('next')}
-                    currentWeek={currentWeek}
-                    isPrevDisabled={weekOffset === 0}
-                    isNextDisabled={false}  // Usuń limit - zawsze pozwól iść do przodu
-                    planHtml={plan.html}
-                    mergeEnabled={mergeEnabled}
-                    isFilteringEnabled={filterEnabled}
-                    onFilterToggle={handleFilterToggle}
-                    onMergeToggle={handleMergeToggle}
-                    // Calendar subscription props
-                    planId={selection.plan}
-                    groupName={selection.group}
-                    selectedGroups={selection.selectedGroups}
-                    isMixedPlan={isPlanMixed}
-                  />
-                )}
-                
-                <PlanDisplay
-                  plan={plan}
+
+                <WeekControls
+                  onPrevWeek={() => handleWeekChange('prev')}
+                  onNextWeek={() => handleWeekChange('next')}
                   currentWeek={currentWeek}
-                  onTimeSlotChange={(current, next) => {
-                    setCurrentTimeSlot(current);
-                    setNextTimeSlot(next);
-                  }}
+                  isPrevDisabled={weekOffset === 0}
+                  isNextDisabled={false}
+                  planHtml={plan.html}
+                  mergeEnabled={mergeEnabled}
+                  isFilteringEnabled={filterEnabled}
                   onFilterToggle={handleFilterToggle}
                   onMergeToggle={handleMergeToggle}
+                  planId={selection.plan}
+                  groupName={selection.group}
+                  selectedGroups={selection.selectedGroups}
+                  isMixedPlan={isPlanMixed}
                 />
-              </>
+
+                <div className="glass-card overflow-hidden">
+                  <PlanDisplay
+                    plan={plan}
+                    currentWeek={currentWeek}
+                    onTimeSlotChange={(current, next) => {
+                      setCurrentTimeSlot(current);
+                      setNextTimeSlot(next);
+                    }}
+                    onFilterToggle={handleFilterToggle}
+                    onMergeToggle={handleMergeToggle}
+                  />
+                </div>
+              </div>
             )}
           </div>
         </div>
 
-        {/* Blog Section - Clean Card */}
-        <div className="mt-8">
+        {/* Blog Section */}
+        <div className="mt-12">
           <BlogSection />
         </div>
 
-        {/* Minimalist Footer */}
-        <footer className="mt-16 py-12 border-t border-gray-100">
-          <div className="text-center space-y-3">
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-gray-900">
-                Plan Zajęć WSPA Lublin
-              </p>
-              <p className="text-xs text-gray-500">
-                Nieoficjalne narzędzie • Działa za pozwoleniem uczelni
-              </p>
-            </div>
-            <div className="flex items-center justify-center gap-2 text-xs text-gray-400">
-              <span>Informatyka</span>
-              <span className="text-gray-300">•</span>
-              <span>Prawo</span>
-              <span className="text-gray-300">•</span>
-              <span>Administracja</span>
-              <span className="text-gray-300">•</span>
-              <span>Bezpieczeństwo</span>
-            </div>
-            <p className="text-xs text-gray-400">
-              © {new Date().getFullYear()} • Stworzone dla społeczności WSPA
+        {/* Footer */}
+        <footer className="mt-16 pt-8 pb-6 border-t border-gray-200/60">
+          <div className="text-center space-y-2">
+            <p className="text-sm font-medium text-ink">
+              Plan Zajęć WSPA Lublin
+            </p>
+            <p className="text-xs text-ink-muted">
+              Nieoficjalne narzędzie · Działa za pozwoleniem uczelni
+            </p>
+            <p className="text-xs text-ink-muted/60">
+              © {new Date().getFullYear()} · Stworzone dla społeczności WSPA
             </p>
           </div>
         </footer>

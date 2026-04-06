@@ -186,7 +186,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
             cells.forEach((cell, cellIndex) => {
                 if (cellIndex !== 0) { // Skip first column (time)
                     cell.innerHTML = cell.innerHTML.replace(
-                        /^([^-]+?)(?=-)(-)/,
+                        /^(.+?)\s+[-–]\s+/,
                         '<strong class="text-wspia-gray">$1</strong><br/>'
                     );
                 }
@@ -409,59 +409,52 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
     }, [plan.category, plan.id]);
 
     return (
-        <div className="bg-white rounded-lg shadow-lg p-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                    <div className="flex items-center gap-2">
-                        <div 
-                            className={`w-2 h-2 rounded-full ${status.isOnline ? 'bg-green-500' : 'bg-red-500'}`} 
-                            title={`Status: ${status.isOnline ? 'Online' : 'Offline'}`} 
-                        />
-                        <h2 className="text-xl sm:text-2xl font-bold text-wspia-gray">Plan zajęć</h2>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-4">
-                        {plan.category === 'st' && (
-                            <div className="flex items-center gap-2">
-                                <Toggle
-                                    checked={filterEnabled}
-                                    onChange={handleFilterToggle}
-                                    label="Filtruj bieżący tydzień"
-                                />
-                                <span className="text-sm text-gray-600">
-                                    Filtruj bieżący tydzień
-                                </span>
-                            </div>
-                        )}
-                        <div className="flex items-center gap-2">
-                            <Toggle
-                                checked={mergeEnabled}
-                                onChange={handleMergeToggle}
-                                label="Łącz komórki"
-                            />
-                            <span className="text-sm text-gray-600">
-                                Łącz komórki
-                            </span>
-                        </div>
-                        {/* Render the censorship toggle only if censorship is enabled globally */}
-                        {isCensorshipEnabledGlobally && (
-                            <div className="flex items-center gap-2">
-                                <Toggle
-                                    checked={censorshipDisabled}
-                                    onChange={handleCensorshipToggle}
-                                    label="Pokaż pełne dane wykładowców"
-                                />
-                                <span className="text-sm text-gray-600">
-                                    Pokaż pełne dane wykładowców
-                                </span>
-                            </div>
-                        )}
-                    </div>
+        <div className="p-4 sm:p-5">
+            {/* Controls bar */}
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mb-4 pb-3 border-b border-gray-100">
+                <div className="flex items-center gap-1.5 mr-auto">
+                    <div
+                        className={`w-1.5 h-1.5 rounded-full ${status.isOnline ? 'bg-emerald-500' : 'bg-red-500'}`}
+                        title={status.isOnline ? 'Online' : 'Offline'}
+                    />
+                    <span className="text-xs text-ink-muted">
+                        {timeSinceUpdate(plan.timestamp)}
+                    </span>
                 </div>
-                <span className="text-sm text-gray-500 whitespace-nowrap">
-                    Ostatnia aktualizacja: {timeSinceUpdate(plan.timestamp)}
-                </span>
+
+                {plan.category === 'st' && (
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                        <Toggle
+                            checked={filterEnabled}
+                            onChange={handleFilterToggle}
+                            label="Filtruj tydzień"
+                        />
+                        <span className="text-xs text-ink-muted select-none">Filtruj tydzień</span>
+                    </label>
+                )}
+
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                    <Toggle
+                        checked={mergeEnabled}
+                        onChange={handleMergeToggle}
+                        label="Łącz komórki"
+                    />
+                    <span className="text-xs text-ink-muted select-none">Łącz komórki</span>
+                </label>
+
+                {isCensorshipEnabledGlobally && (
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                        <Toggle
+                            checked={censorshipDisabled}
+                            onChange={handleCensorshipToggle}
+                            label="Wykładowcy"
+                        />
+                        <span className="text-xs text-ink-muted select-none">Wykładowcy</span>
+                    </label>
+                )}
             </div>
 
+            {/* Table */}
             <div className="overflow-x-auto">
                 <div
                     ref={containerRef}
@@ -470,27 +463,25 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                     dangerouslySetInnerHTML={{ __html: filteredHtml }}
                 />
             </div>
-            
-            {/* Dodajemy przycisk do zgłaszania sugestii */}
-            <div className="mt-4 flex justify-end">
-                <button 
+
+            {/* Footer */}
+            <div className="mt-4 pt-3 border-t border-gray-100 flex justify-end">
+                <button
                     onClick={() => setShowSuggestionModal(true)}
-                    className="px-4 py-2 text-wspia-red border-2 border-wspia-red rounded-lg hover:bg-wspia-red  transition-colors text-sm"
+                    className="px-3 py-1.5 text-xs"
                 >
                     Zgłoś sugestię lub błąd
                 </button>
             </div>
-            
-            {/* Modal weryfikacji emaila - show only if censorship is enabled globally */}
+
             {isCensorshipEnabledGlobally && (
-                <EmailVerificationModal 
+                <EmailVerificationModal
                     isOpen={showModal}
                     onClose={() => setShowModal(false)}
                     onVerify={handleEmailVerification}
                 />
             )}
-            
-            {/* Modal zgłaszania sugestii */}
+
             <SuggestionModal
                 isOpen={showSuggestionModal}
                 onClose={() => setShowSuggestionModal(false)}

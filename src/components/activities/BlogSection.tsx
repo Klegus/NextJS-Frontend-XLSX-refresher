@@ -2,12 +2,15 @@ import { ActivitiesList } from './ActivitiesList';
 
 export const BlogSection: React.FC = () => {
   return (
-    <section className="mt-8">
-      <h2 className="text-4xl font-bold mb-8 text-center text-gray-700">
-        Blog WSPA
-      </h2>
-      
-      <div className="bg-white p-8 rounded-lg shadow-lg">
+    <section>
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-1 h-6 bg-wspia-red rounded-full" />
+        <h2 className="text-xl font-bold tracking-tight text-ink">
+          Aktualności
+        </h2>
+      </div>
+
+      <div className="glass-card p-5 sm:p-6">
         <ActivitiesList autoRefresh={true} />
       </div>
     </section>

@@ -137,45 +137,38 @@ interface WeekControlsProps {
     };
   
     return (
-      <div className="flex items-center justify-between px-4 py-2 bg-white rounded-lg shadow-sm mb-4 flex-wrap gap-2">
+      <div className="glass-card flex items-center justify-between px-4 py-2.5 mb-4 flex-wrap gap-2">
         <div className="flex justify-between w-full sm:w-auto sm:space-x-2">
           <button
             onClick={onPrevWeek}
             disabled={isPrevDisabled}
-            className="px-4 py-2 text-wspia-red border-2 border-wspia-red rounded-lg
-                     disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 text-sm"
           >
-            ← <span className="hidden sm:inline">Poprzedni tydzień</span>
-            <span className="sm:hidden">Poprzedni</span>
+            ← <span className="hidden sm:inline">Poprzedni</span>
           </button>
-  
+
           <button
             onClick={onNextWeek}
             disabled={isNextDisabled}
-            className="sm:ml-2 px-4 py-2 text-wspia-red border-2 border-wspia-red rounded-lg
-                     disabled:opacity-50 disabled:cursor-not-allowed order-last sm:order-none"
+            className="sm:ml-2 px-3 py-1.5 text-sm order-last sm:order-none"
           >
-            <span className="hidden sm:inline">Następny tydzień</span>
-            <span className="sm:hidden">Następny</span> →
+            <span className="hidden sm:inline">Następny</span> →
           </button>
         </div>
-        
-        <div className="text-center font-medium flex-grow mx-2">
-          {formatDate(currentWeek.start)} - {formatDate(currentWeek.end)}
+
+        <div className="text-center text-sm font-semibold text-ink flex-grow mx-2 tabular-nums">
+          {formatDate(currentWeek.start)} – {formatDate(currentWeek.end)}
         </div>
-        
+
         {planHtml && (
-          <div className="flex gap-2">
-            {/* Calendar subscription button */}
-            <button
-              onClick={handleCalendarSubscription}
-              className="px-4 py-2 bg-white text-red-600 font-semibold border-2 border-red-600 rounded-lg transition-all duration-200 shadow-sm hover:shadow-lg hover:bg-red-50 hover:text-red-700 hover:border-red-700"
-              title="Subskrybuj kalendarz (automatyczne aktualizacje)"
-            >
-              <span className="hidden sm:inline">📅 Subskrybuj kalendarz</span>
-              <span className="sm:hidden">📅 Subskrybuj</span>
-            </button>
-          </div>
+          <button
+            onClick={handleCalendarSubscription}
+            className="px-3 py-1.5 text-sm"
+            title="Subskrybuj kalendarz"
+          >
+            <span className="hidden sm:inline">Subskrybuj kalendarz</span>
+            <span className="sm:hidden">Kalendarz</span>
+          </button>
         )}
       </div>
     );

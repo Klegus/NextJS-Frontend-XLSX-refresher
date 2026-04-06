@@ -59,19 +59,19 @@ export const ActivitiesList: React.FC<ActivitiesListProps> = ({
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-wspia-red"></div>
+      <div className="flex justify-center items-center py-10">
+        <div className="w-6 h-6 border-2 border-wspia-red border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="text-center p-4 text-red-600">
-        <p>{error}</p>
+      <div className="text-center py-6">
+        <p className="text-sm text-red-600 mb-3">{error}</p>
         <button
           onClick={fetchActivities}
-          className="mt-2 px-4 py-2 text-wspia-red border border-wspia-red rounded hover:bg-wspia-red hover:text-white transition-colors"
+          className="px-4 py-2 text-sm"
         >
           Spróbuj ponownie
         </button>
@@ -81,14 +81,14 @@ export const ActivitiesList: React.FC<ActivitiesListProps> = ({
 
   if (activities.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500">
+      <div className="text-center py-10 text-ink-muted text-sm">
         Brak aktualnych aktywności
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       {activities.map(activity => (
         <ActivityCard
           key={activity.id}
