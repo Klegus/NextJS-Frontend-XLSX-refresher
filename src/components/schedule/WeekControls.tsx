@@ -74,66 +74,49 @@ interface WeekControlsProps {
       const subscriptionUrl = generateSubscriptionUrl();
 
       if (!subscriptionUrl) {
-        console.error('Cannot generate subscription URL - missing planId or group data');
         alert('Nie można wygenerować linku subskrypcji - brak wymaganych danych planu.');
         return;
       }
 
-      try {
-        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const isAndroid = /android/i.test(navigator.userAgent);
+      const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-        if (isLocalhost) {
-          // For localhost, provide manual instructions
-          if (navigator.clipboard) {
-            navigator.clipboard.writeText(subscriptionUrl);
-          }
+      // Copy to clipboard first (works everywhere)
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(subscriptionUrl).catch(() => {});
+      }
 
-          alert(`Subskrypcja kalendarza na localhost:\n\n` +
-                `Link został skopiowany do schowka:\n${subscriptionUrl}\n\n` +
-                `Instrukcja dla Apple Calendar:\n` +
-                `1. Otwórz Kalendarz\n` +
-                `2. Plik → Nowa subskrypcja kalendarza\n` +
-                `3. Wklej link HTTP (nie webcal)\n\n` +
-                `Instrukcja dla Google Calendar:\n` +
-                `1. Otwórz calendar.google.com\n` +
-                `2. + obok "Inne kalendarze"\n` +
-                `3. "Z adresu URL"\n` +
-                `4. Wklej link`);
-        } else {
-          // For production, use webcal://
-          const webcalUrl = subscriptionUrl.replace(/^https?:/, 'webcal:');
-          window.location.href = webcalUrl;
-
-          // Also copy URL to clipboard as fallback
-          if (navigator.clipboard) {
-            navigator.clipboard.writeText(subscriptionUrl)
-              .then(() => {
-                showToast({
-                  message: 'Otwieranie kalendarza... Link też skopiowany do schowka.',
-                  type: 'success'
-                });
-              })
-              .catch((err) => {
-                console.error('Failed to copy to clipboard:', err);
-              });
-          }
-        }
-      } catch (error) {
-        console.error('Error opening calendar subscription:', error);
-
-        // Fallback to copying URL to clipboard
-        const message = `Skopiuj ten link do swojej aplikacji kalendarza:\n${subscriptionUrl}`;
-        if (navigator.clipboard) {
-          navigator.clipboard.writeText(subscriptionUrl)
-            .then(() => {
-              alert(message + '\n\n✅ Link został skopiowany do schowka');
-            })
-            .catch(() => {
-              alert(`Skopiuj ten link do swojej aplikacji kalendarza:\n${subscriptionUrl}`);
-            });
-        } else {
-          alert(`Skopiuj ten link do swojej aplikacji kalendarza:\n${subscriptionUrl}`);
-        }
+      if (isLocalhost) {
+        alert(
+          `Link skopiowany do schowka:\n${subscriptionUrl}\n\n` +
+          `Apple Calendar: Plik → Nowa subskrypcja kalendarza → wklej link\n` +
+          `Google Calendar: calendar.google.com → + Inne kalendarze → Z adresu URL → wklej`
+        );
+      } else if (isAndroid) {
+        // Android: Google Calendar URL scheme
+        const googleCalUrl = `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(subscriptionUrl)}`;
+        window.open(googleCalUrl, '_blank');
+        showToast({
+          message: 'Otwieranie Google Calendar... Link też skopiowany do schowka.',
+          type: 'success'
+        });
+      } else if (isIOS) {
+        // iOS: webcal:// protocol
+        const webcalUrl = subscriptionUrl.replace(/^https?:/, 'webcal:');
+        window.location.href = webcalUrl;
+        showToast({
+          message: 'Otwieranie kalendarza...',
+          type: 'success'
+        });
+      } else {
+        // Desktop: try webcal, fallback to copy
+        const webcalUrl = subscriptionUrl.replace(/^https?:/, 'webcal:');
+        window.location.href = webcalUrl;
+        showToast({
+          message: 'Otwieranie kalendarza... Link też skopiowany do schowka.',
+          type: 'success'
+        });
       }
     };
   
