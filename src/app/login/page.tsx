@@ -50,7 +50,7 @@ function LoginPageContent() {
 
           <button
             onClick={handleLogin}
-            className="w-full py-3 px-4 !bg-ink !text-white !border-ink rounded-xl flex items-center justify-center gap-3 hover:!bg-ink/85 hover:!border-ink/85 transition-all font-medium text-sm"
+            className="btn-dark w-full py-3 px-4 rounded-xl flex items-center justify-center gap-3 font-medium text-sm"
           >
             <svg className="w-5 h-5 shrink-0" viewBox="0 0 23 23" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M1 1H11V11H1V1Z" fill="#F25022" />
@@ -58,7 +58,7 @@ function LoginPageContent() {
               <path d="M1 12H11V22H1V12Z" fill="#00A4EF" />
               <path d="M12 12H22V22H12V12Z" fill="#FFB900" />
             </svg>
-            <span className="text-white">Zaloguj kontem uczelnianym</span>
+            <span>Zaloguj kontem uczelnianym</span>
           </button>
 
           <p className="text-[0.6875rem] text-ink-muted/60 mt-4">
