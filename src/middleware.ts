@@ -5,6 +5,12 @@ import { verifyAuthToken } from '@/lib/msauth-server';
 // Funkcja verifyAuthToken jest teraz importowana z msauth-server.ts
 
 export async function middleware(request: NextRequest) {
+  // Development bypass — gdy SKIP_AUTH=true, wyłączamy route guard całkowicie.
+  // Dzięki temu można pracować nad UI bez rejestrowania aplikacji w Azure AD.
+  if (process.env.SKIP_AUTH === 'true') {
+    return NextResponse.next();
+  }
+
   // Lista ścieżek publicznych nie wymagających uwierzytelnienia
   const publicUrls = [
     '/api/auth/signin',
