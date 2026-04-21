@@ -3,29 +3,21 @@
 // Stałe dla Microsoft OAuth
 const MICROSOFT_OAUTH_URL = 'https://login.microsoftonline.com';
 
-// Funkcja do generowania adresu przekierowania (bezpieczna dla SSR)
+// Generuje redirect URI — priorytet: env var > window.location
 function getRedirectUri() {
-  // W środowisku produkcyjnym zawsze używamy stałego adresu
-  if (process.env.NODE_ENV === 'production') {
-    console.log('Produkcja: używam stałego adresu https://dev.planinf.pl/api/auth/callback');
-    return 'https://dev.planinf.pl/api/auth/callback';
-  }
-  
-  // Wymuszamy użycie zmiennej środowiskowej, jeśli jest ustawiona
+  // Priorytet 1: zmienna środowiskowa (ustawiana przy buildzie)
   if (process.env.NEXT_PUBLIC_REDIRECT_URI) {
-    console.log('Używam NEXT_PUBLIC_REDIRECT_URI:', process.env.NEXT_PUBLIC_REDIRECT_URI);
     return process.env.NEXT_PUBLIC_REDIRECT_URI;
   }
-  
-  // W środowisku produkcyjnym nie powinniśmy tutaj trafiać
-  console.warn('NEXT_PUBLIC_REDIRECT_URI nie jest ustawiony, używam wartości domyślnej');
-  
-  if (typeof window === 'undefined') {
-    return '';
+
+  // Priorytet 2: window.location (dynamiczne, działa dla każdego środowiska)
+  if (typeof window !== 'undefined') {
+    const port = window.location.port ? `:${window.location.port}` : '';
+    return `${window.location.protocol}//${window.location.hostname}${port}/api/auth/callback`;
   }
-  
-  // Ostateczność: używamy window.location (może być niepoprawne za proxy)
-  return `${window.location.protocol}//${window.location.hostname}${window.location.port ? `:${window.location.port}` : ''}/api/auth/callback`;
+
+  // SSR fallback — wartość dla dev
+  return 'http://localhost:3000/api/auth/callback';
 }
 
 // Funkcja do przekierowania na stronę logowania Microsoft

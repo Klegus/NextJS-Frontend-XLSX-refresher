@@ -1,25 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAuthToken, SERVER_REDIRECT_URI, sanitizeRedirectUrl } from '@/lib/msauth-server';
 
-// Funkcja pomocnicza do tworzenia tokenu i przekierowania
+// Tworzy token i przekierowuje na stronę główną
 async function createAndReturnToken(userData: { id: string, name: string, email: string }, request: NextRequest) {
-  // Utwórz token uwierzytelniający
   const authToken = await createAuthToken(userData);
-  
-  console.log('Request headers:', Object.fromEntries(request.headers));
-  console.log('Request URL:', request.url);
-  
-  // Najprostsza wersja - używamy strony głównej
-  let homepageUrl: string;
-  if (process.env.NODE_ENV === 'production') {
-    // W produkcji zawsze używamy pełnego URL
-    homepageUrl = 'https://dev.planinf.pl/';
-  } else {
-    // W trybie dev możemy użyć względnego URL
-    homepageUrl = '/';
-  }
-  
-  console.log('Przekierowuję na:', homepageUrl);
+
+  // Używamy request.nextUrl.origin — to automatycznie daje poprawny host
+  // (localhost w dev, domena produkcyjna za proxy)
+  const homepageUrl = process.env.NODE_ENV === 'production'
+    ? (process.env.PRODUCTION_BASE_URL || request.nextUrl.origin) + '/'
+    : '/';
   
   // Tworzymy odpowiedź z NextResponse, który ma metodę cookies
   const response = NextResponse.redirect(homepageUrl, {

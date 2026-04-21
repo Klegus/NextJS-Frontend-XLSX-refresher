@@ -1,6 +1,6 @@
 import { jwtVerify, SignJWT } from 'jose';
 
-// Funkcja do weryfikacji tokenu JWT (używana w middleware)
+// Weryfikacja tokenu JWT (używana w middleware)
 export async function verifyAuthToken(token: string): Promise<any> {
   try {
     const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'default-secret-key');
@@ -11,11 +11,11 @@ export async function verifyAuthToken(token: string): Promise<any> {
   }
 }
 
-// Funkcja do utworzenia tokenu JWT po pomyślnym uwierzytelnieniu
+// Tworzenie tokenu JWT po pomyślnym uwierzytelnieniu
 export async function createAuthToken(userData: any): Promise<string> {
   const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'default-secret-key');
-  
-  return new SignJWT({ 
+
+  return new SignJWT({
     sub: userData.id,
     name: userData.name,
     email: userData.email,
@@ -26,36 +26,29 @@ export async function createAuthToken(userData: any): Promise<string> {
     .sign(secret);
 }
 
-// Stałe dla Microsoft OAuth
+// Stałe Microsoft OAuth
 export const MICROSOFT_OAUTH_URL = 'https://login.microsoftonline.com';
-console.log('REDIRECT_URI from env:', process.env.REDIRECT_URI);
-console.log('NODE_ENV:', process.env.NODE_ENV);
 
-// Specjalne zabezpieczenie: zawsze używamy konkretnej wartości w środowisku produkcyjnym,
-// bez względu na inne ustawienia
-export const SERVER_REDIRECT_URI = process.env.NODE_ENV === 'production' 
-  ? 'https://dev.planinf.pl/api/auth/callback' 
-  : (process.env.REDIRECT_URI || 'http://localhost:5000/api/auth/callback');
+// Bazowy URL produkcyjny — konfigurowalny przez env var
+const PRODUCTION_BASE_URL = process.env.PRODUCTION_BASE_URL || 'https://planinf.pl';
 
-console.log('Using REDIRECT_URI:', SERVER_REDIRECT_URI);
+// URL przekierowania po autoryzacji (priorytet: REDIRECT_URI env > produkcja > localhost)
+export const SERVER_REDIRECT_URI = process.env.REDIRECT_URI
+  || (process.env.NODE_ENV === 'production'
+    ? `${PRODUCTION_BASE_URL}/api/auth/callback`
+    : 'http://localhost:3000/api/auth/callback');
 
-// Rozszerzona funkcja do naprawiania URL-i przekierowań
+// Naprawianie URL-i przekierowań — chroni przed tym że OAuth provider
+// przekierowuje z powrotem na localhost w produkcji
 export function sanitizeRedirectUrl(url: string): string {
-  // W produkcji naprawiamy wszystkie adresy localhost
-  if (process.env.NODE_ENV === 'production') {
-    // Sprawdzanie różnych wersji adresów localhost
-    if (url.includes('localhost') || url.includes('127.0.0.1')) {
-      console.warn('Wykryto próbę przekierowania na localhost w produkcji!');
-      console.warn('Oryginalny URL:', url);
-      
-      // Tworzymy nowy URL z poprawną domeną
-      const fixedUrl = url
-        .replace(/https?:\/\/localhost:[0-9]+/g, 'https://dev.planinf.pl')
-        .replace(/https?:\/\/127\.0\.0\.1:[0-9]+/g, 'https://dev.planinf.pl');
-      
-      console.warn('Poprawiony URL:', fixedUrl);
-      return fixedUrl;
-    }
+  if (process.env.NODE_ENV !== 'production') return url;
+
+  if (url.includes('localhost') || url.includes('127.0.0.1')) {
+    const fixedUrl = url
+      .replace(/https?:\/\/localhost(:[0-9]+)?/g, PRODUCTION_BASE_URL)
+      .replace(/https?:\/\/127\.0\.0\.1(:[0-9]+)?/g, PRODUCTION_BASE_URL);
+    console.warn(`Sanitized redirect: ${url} -> ${fixedUrl}`);
+    return fixedUrl;
   }
   return url;
 }

@@ -2,100 +2,73 @@
 
 import { loginWithMicrosoft } from '@/lib/msauth';
 import { Suspense, useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 
 function LoginPageContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
-  const [callbackUrl, setCallbackUrl] = useState('/');
-  
-  // Pobierz callbackUrl tylko po stronie klienta
-  useEffect(() => {
-    setCallbackUrl(searchParams?.get('callbackUrl') || '/');
-  }, [searchParams]);
 
   useEffect(() => {
-    // Check if there's an error from the auth provider
     const errorParam = searchParams?.get('error');
-    if (errorParam) {
-      setError(decodeURIComponent(errorParam));
-    }
+    if (errorParam) setError(decodeURIComponent(errorParam));
   }, [searchParams]);
 
   const handleLogin = async () => {
     try {
       await loginWithMicrosoft();
-    } catch (error: any) {
-      setError(error.message || 'Wystąpił błąd podczas logowania. Spróbuj ponownie.');
+    } catch (err: any) {
+      setError(err?.message || 'Wystąpił błąd podczas logowania. Spróbuj ponownie.');
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col items-center justify-center p-4 sm:p-6 md:p-8">
-      <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 max-w-md w-full border border-gray-100">
-        <div className="text-center mb-8">
-          <div className="w-24 h-24 mx-auto mb-6 bg-white rounded-full shadow-md overflow-hidden flex items-center justify-center border-4 border-blue-50">
-            <img
-              src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSAvu7fXk3m4Lz5iwLKJHAPKlelKnT8CjI-Bg&s"
-              alt="WSPiA Logo"
-              className="w-20 h-20 object-contain"
-            />
-          </div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-4 tracking-tight">
-            Plan zajęć WSPA
+    <div className="min-h-screen flex items-center justify-center p-6">
+      <div className="w-full max-w-sm text-center">
+        {/* Logo */}
+        <div className="inline-flex items-center justify-center w-20 h-20 mb-6 bg-white rounded-2xl shadow-glass ring-1 ring-black/[0.04] overflow-hidden">
+          <img
+            src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSAvu7fXk3m4Lz5iwLKJHAPKlelKnT8CjI-Bg&s"
+            alt="WSPA Logo"
+            className="w-14 h-14 object-contain"
+          />
+        </div>
+
+        {/* Card */}
+        <div className="glass-card p-8 mb-6">
+          <h1 className="text-xl font-bold text-ink mb-2 tracking-tight">
+            Plan Zajęć WSPA
           </h1>
-          <p className="text-gray-600 mb-6 max-w-xs mx-auto">
-            Zaloguj się, aby uzyskać dostęp do planu zajęć i materiałów dydaktycznych
+          <p className="text-sm text-ink-muted leading-relaxed mb-6">
+            Zaloguj się kontem uczelnianym, aby zobaczyć plan zajęć.
+          </p>
+
+          {error && (
+            <div className="bg-wspia-red/[0.06] ring-1 ring-wspia-red/15 rounded-lg p-3 mb-4 text-left">
+              <p className="text-xs text-wspia-red">{error}</p>
+            </div>
+          )}
+
+          <button
+            onClick={handleLogin}
+            className="w-full py-3 px-4 bg-ink text-white rounded-xl flex items-center justify-center gap-3 hover:bg-ink/85 transition-all font-medium text-sm"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 23 23" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M1 1H11V11H1V1Z" fill="#F25022" />
+              <path d="M12 1H22V11H12V1Z" fill="#7FBA00" />
+              <path d="M1 12H11V22H1V12Z" fill="#00A4EF" />
+              <path d="M12 12H22V22H12V12Z" fill="#FFB900" />
+            </svg>
+            <span>Zaloguj się przez Microsoft</span>
+          </button>
+
+          <p className="text-[0.6875rem] text-ink-muted/60 mt-4">
+            Użyj konta @wspa.pl lub @student.wspa.pl
           </p>
         </div>
 
-        {error && (
-          <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-r">
-            <p className="text-red-700 text-sm">{error}</p>
-          </div>
-        )}
-
-        <div className="space-y-4">
-          <button
-            onClick={handleLogin}
-            className="w-full py-4 px-4 bg-white hover:bg-gray-100 text-gray-800 font-semibold rounded-lg flex items-center justify-center transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-1 border border-gray-200"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6 mr-3"
-              viewBox="0 0 23 23"
-              fill="none"
-            >
-              <path
-                d="M1 1H11V11H1V1Z"
-                fill="#F25022"
-              />
-              <path
-                d="M12 1H22V11H12V1Z"
-                fill="#7FBA00"
-              />
-              <path
-                d="M1 12H11V22H1V12Z"
-                fill="#00A4EF"
-              />
-              <path
-                d="M12 12H22V22H12V12Z"
-                fill="#FFB900"
-              />
-            </svg>
-            <span className="text-lg tracking-wide">Zaloguj się przez uczelniany email Office</span>
-          </button>
-          
-          <div className="text-center text-sm text-gray-500 mt-4">
-            <p>Aby uzyskać dostęp, użyj swojego konta uczelnianego</p>
-          </div>
-        </div>
-      </div>
-      
-      <div className="mt-10 text-center">
-        <p className="text-sm text-gray-600 mb-1">© {new Date().getFullYear()} WSPA</p>
-        <p className="text-xs text-gray-500">Wszystkie prawa zastrzeżone</p>
+        <p className="text-[0.6875rem] text-ink-muted/40 tracking-widest uppercase font-medium">
+          WSPA Lublin · {new Date().getFullYear()}
+        </p>
       </div>
     </div>
   );
@@ -104,8 +77,8 @@ function LoginPageContent() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-        <p>Ładowanie...</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-wspia-red border-t-transparent rounded-full animate-spin" />
       </div>
     }>
       <LoginPageContent />
