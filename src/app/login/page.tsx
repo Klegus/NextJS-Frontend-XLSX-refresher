@@ -63,7 +63,7 @@ function LoginPageContent() {
                 onClick={() => router.push('/')}
                 className="btn-dark w-full py-3 px-4 rounded-xl flex items-center justify-center gap-3 font-medium text-sm"
               >
-                <span>Przejdź do aplikacji →</span>
+                Przejdź do aplikacji →
               </button>
             </>
           ) : (

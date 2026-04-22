@@ -74,12 +74,15 @@ button:disabled {
 }
 
 /* Dedykowana klasa dla ciemnego przycisku (np. login Microsoft) —
-   ma wyższą specyficzność niż globalny button:hover */
+   nadpisuje WSZYSTKIE globalne style button (hover, disabled, normal) */
 button.btn-dark,
-button.btn-dark:hover:not(:disabled) {
+button.btn-dark:hover,
+button.btn-dark:focus,
+button.btn-dark:disabled,
+button.btn-dark[disabled] {
   background-color: var(--ink) !important;
   border-color: var(--ink) !important;
-  color: white !important;
+  color: #ffffff !important;
   transform: none;
   box-shadow: none;
 }
@@ -89,6 +92,12 @@ button.btn-dark:hover:not(:disabled) {
   border-color: #2d3038 !important;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+button.btn-dark:disabled,
+button.btn-dark[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* ─── Select inputs ────────────────────────────────────── */
