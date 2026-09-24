@@ -383,79 +383,63 @@ function parseSingleHtmlTable(htmlContent: string): CalendarEvent[] {
       }
     });
 
-    // Standard WSPA time slots
-    const timeSlots = [
-      { start: "07:25", end: "08:10" },
-      { start: "08:15", end: "09:00" },
-      { start: "09:05", end: "09:50" },
-      { start: "10:00", end: "10:45" },
-      { start: "10:50", end: "11:35" },
-      { start: "11:45", end: "12:30" },
-      { start: "12:35", end: "13:20" },
-      { start: "13:30", end: "14:15" },
-      { start: "14:20", end: "15:05" },
-      { start: "15:15", end: "16:00" },
-      { start: "16:05", end: "16:50" },
-      { start: "17:00", end: "17:45" },
-      { start: "17:50", end: "18:35" },
-      { start: "18:45", end: "19:30" },
-      { start: "19:35", end: "20:20" },
-      { start: "20:30", end: "21:15" }
-    ];
+    // Academic year: September..December belong to the starting year, the rest to the next one
+    const nowWarsaw = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Warsaw' }));
+    const startYear = nowWarsaw.getMonth() + 1 >= 9 ? nowWarsaw.getFullYear() : nowWarsaw.getFullYear() - 1;
+    const yearFor = (month: number) => (month >= 9 ? startYear : startYear + 1);
 
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const todayStr = `${currentYear}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getDate().toString().padStart(2,'0')}`;
-
-    for (let rowIndex = 1; rowIndex < rowMatches.length && (rowIndex - 1) < timeSlots.length; rowIndex++) {
+    for (let rowIndex = 1; rowIndex < rowMatches.length; rowIndex++) {
       const row = rowMatches[rowIndex];
-      const timeSlot = timeSlots[rowIndex - 1];
       const cellMatches = row.match(/<td[^>]*>([\s\S]*?)<\/td>/gi) || [];
+      if (!cellMatches.length) continue;
+
+      // Hours come from the first cell, e.g. "8<sup>15</sup> - 9<sup>00</sup>"
+      const timeText = cellMatches[0].replace(/<[^>]*>/g, ':').replace(/:+/g, ':');
+      const tm = timeText.match(/(\d{1,2})\D*?(\d{2})\D+?(\d{1,2})\D*?(\d{2})/);
+      if (!tm) continue;
+      const timeSlot = {
+        start: `${tm[1].padStart(2, '0')}:${tm[2]}`,
+        end: `${tm[3].padStart(2, '0')}:${tm[4]}`,
+      };
 
       for (let dayIndex = 0; dayIndex < dayCount && (dayIndex + 1) < cellMatches.length; dayIndex++) {
         const cell = cellMatches[dayIndex + 1];
-        const cellContent = cell.replace(/<[^>]*>/g, '').trim();
-        if (!cellContent) continue;
+        const cellText = cell.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '').trim();
+        if (!cellText) continue;
 
-        const expectedDow = columnDayOfWeek[dayIndex]; // expected day-of-week for this column
+        const expectedDow = columnDayOfWeek[dayIndex];
 
-        // Extract title
-        let title = cellContent.split('\n')[0].trim();
-        const titleMatch = title.match(/^(.+?)\s*[-–]\s*(laboratorium|wykład|warsztat|ćwiczenia|projekt|seminarium|konwersatorium|lektorat)/i);
-        if (titleMatch) title = `${titleMatch[1].trim()} - ${titleMatch[2]}`;
-        if (title.length > 60) title = title.substring(0, 57) + '...';
+        // One cell can hold several classes (different dates), separated by a blank line
+        cellText.split(/\n\s*\n/).map(t => t.trim()).filter(Boolean).forEach(cellContent => {
+          let title = cellContent.split('\n')[0].trim();
+          const titleMatch = title.match(/^(.+?)\s*[-–]\s*(laboratorium|wykład|warsztat|ćwiczenia|projekt|seminarium|konwersatorium|lektorat)/i);
+          if (titleMatch) title = `${titleMatch[1].trim()} - ${titleMatch[2]}`;
+          if (title.length > 60) title = title.substring(0, 57) + '...';
 
-        // Extract room / location
-        let location = 'WSPA Lublin';
-        const roomMatch = cellContent.match(/sal[aę]\s+([^\s,\n]+)/i);
-        if (roomMatch) location = `Sala ${roomMatch[1]}, WSPA Lublin`;
-        if (/on-?line/i.test(cellContent)) location = 'Online';
+          let location = 'WSPA Lublin';
+          const roomMatch = cellContent.match(/sal[aę]\s+([^\s,\n]+)/i);
+          if (roomMatch) location = `Sala ${roomMatch[1]}, WSPA Lublin`;
+          if (/on-?line/i.test(cellContent)) location = 'Online';
 
-        // Extract specific dates
-        const datesMatch = cellContent.match(/dat[yae]:?\s*([\d.,\s]+)/i);
-        if (!datesMatch) continue;
+          const datesMatch = cellContent.match(/dat[yae]:?\s*([\d.,;\s]+)/i);
+          if (!datesMatch) return;
+          const specificDates = datesMatch[1].match(/(\d{1,2})\.(\d{1,2})/g) || [];
 
-        const specificDates = datesMatch[1].match(/(\d{2})\.(\d{2})/g) || [];
+          specificDates.forEach(dateStr => {
+            const [day, month] = dateStr.split('.').map(n => parseInt(n, 10));
+            if (!day || !month || month > 12) return;
+            const year = yearFor(month);
+            const dateObj = new Date(Date.UTC(year, month - 1, day));
+            if (expectedDow >= 0 && dateObj.getUTCDay() !== expectedDow) return;
+            const eventDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-        specificDates.forEach(dateStr => {
-          const [dayStr, monthStr] = dateStr.split('.');
-          const day = parseInt(dayStr);
-          const month = parseInt(monthStr);
-          const eventDate = `${currentYear}-${monthStr}-${dayStr}`;
-
-          // Only include if this date's day-of-week matches the column
-          const dateObj = new Date(currentYear, month - 1, day);
-          if (expectedDow >= 0 && dateObj.getDay() !== expectedDow) return;
-
-          // Only include from today onwards
-          if (eventDate < todayStr) return;
-
-          events.push({
-            title,
-            startDate: `${eventDate}T${timeSlot.start}:00`,
-            endDate: `${eventDate}T${timeSlot.end}:00`,
-            location,
-            description: cellContent.replace(/\n/g, ' ').trim(),
+            events.push({
+              title,
+              startDate: `${eventDate}T${timeSlot.start}:00`,
+              endDate: `${eventDate}T${timeSlot.end}:00`,
+              location,
+              description: cellContent.replace(/\n+/g, ' ').trim(),
+            });
           });
         });
       }
@@ -463,6 +447,7 @@ function parseSingleHtmlTable(htmlContent: string): CalendarEvent[] {
 
     // Merge consecutive time slots with identical content on the same date
     // e.g. 3 slots of "Projekt" 11:45, 12:35, 13:30 -> one event 11:45-14:15
+    const minutes = (iso: string) => { const [h, m] = iso.split('T')[1].split(':').map(Number); return h * 60 + m; };
     const mergedEvents: CalendarEvent[] = [];
     const byDateAndDay = new Map<string, CalendarEvent[]>();
 
@@ -475,15 +460,21 @@ function parseSingleHtmlTable(htmlContent: string): CalendarEvent[] {
 
     byDateAndDay.forEach(group => {
       group.sort((a, b) => a.startDate.localeCompare(b.startDate));
-      // Take earliest start and latest end
-      mergedEvents.push({
-        ...group[0],
-        endDate: group[group.length - 1].endDate,
-      });
+      let current = { ...group[0] };
+      for (const e of group.slice(1)) {
+        const gap = minutes(e.startDate) - minutes(current.endDate);
+        if (gap <= 20) {
+          if (e.endDate > current.endDate) current.endDate = e.endDate;
+        } else {
+          mergedEvents.push(current);
+          current = { ...e };
+        }
+      }
+      mergedEvents.push(current);
     });
 
     mergedEvents.sort((a, b) => a.startDate.localeCompare(b.startDate));
-    console.log(`Parsed ${events.length} raw -> ${mergedEvents.length} merged events (from today, day-matched)`);
+    console.log(`Parsed ${events.length} raw -> ${mergedEvents.length} merged events (day-matched)`);
     return mergedEvents;
 
   } catch (error) {
@@ -515,6 +506,25 @@ function generateIcsContent(events: CalendarEvent[], meta: {
     'X-APPLE-AUTO-REFRESH-INTERVAL:PT15M',  // Apple Calendar alternate property
     'X-MICROSOFT-CDO-REFRESH-INTERVAL:15',  // Legacy Outlook (in minutes)
     'AUTO-REFRESH;VALUE=DURATION:PT15M',  // Alternative standard format
+    // Times are local Warsaw time, independent of where the server runs
+    'BEGIN:VTIMEZONE',
+    'TZID:Europe/Warsaw',
+    'X-LIC-LOCATION:Europe/Warsaw',
+    'BEGIN:DAYLIGHT',
+    'TZOFFSETFROM:+0100',
+    'TZOFFSETTO:+0200',
+    'TZNAME:CEST',
+    'DTSTART:19700329T020000',
+    'RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU',
+    'END:DAYLIGHT',
+    'BEGIN:STANDARD',
+    'TZOFFSETFROM:+0200',
+    'TZOFFSETTO:+0100',
+    'TZNAME:CET',
+    'DTSTART:19701025T030000',
+    'RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU',
+    'END:STANDARD',
+    'END:VTIMEZONE',
   ];
 
   events.forEach((event: any, index) => {
@@ -532,8 +542,8 @@ function generateIcsContent(events: CalendarEvent[], meta: {
       const endTime = event.endDate.split('T')[1];
       const endDateFormatted = (firstDate.split('T')[0] + 'T' + endTime).replace(/[-:]/g, '');
 
-      ics.push(`DTSTART:${startDateFormatted}`);
-      ics.push(`DTEND:${endDateFormatted}`);
+      ics.push(`DTSTART;TZID=Europe/Warsaw:${startDateFormatted}`);
+      ics.push(`DTEND;TZID=Europe/Warsaw:${endDateFormatted}`);
 
       // Add RRULE for weekly recurrence with specific dates
       const untilDate = lastDate.replace(/[-:]/g, '').split('T')[0] + 'T235959';
@@ -543,19 +553,19 @@ function generateIcsContent(events: CalendarEvent[], meta: {
       // Add RDATE for specific dates (in case pattern is irregular)
       if (event.recurrenceDates.length <= 10) {
         const rdates = event.recurrenceDates.map(d => d.replace(/[-:]/g, '')).join(',');
-        ics.push(`RDATE:${rdates}`);
+        ics.push(`RDATE;TZID=Europe/Warsaw:${rdates}`);
       }
     } else {
       // Single event - format normally
       const startDateFormatted = event.startDate.replace(/[-:]/g, '');
       const endDateFormatted = event.endDate.replace(/[-:]/g, '');
-      ics.push(`DTSTART:${startDateFormatted}`);
-      ics.push(`DTEND:${endDateFormatted}`);
+      ics.push(`DTSTART;TZID=Europe/Warsaw:${startDateFormatted}`);
+      ics.push(`DTEND;TZID=Europe/Warsaw:${endDateFormatted}`);
     }
 
     // Add current timestamp
     const now = new Date();
-    ics.push(`DTSTAMP:${formatDateForIcs(now)}`);
+    ics.push(`DTSTAMP:${now.toISOString().replace(/[-:]/g, '').split('.')[0]}Z`);
 
     if (event.location) {
       ics.push(`LOCATION:${escapeIcsText(event.location)}`);
@@ -596,15 +606,12 @@ function generateErrorICS(errorMessage: string): string {
 }
 
 function formatDateForIcs(date: Date): string {
-  // Format: YYYYMMDDTHHMMSS
-  const year = date.getFullYear();
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const day = date.getDate().toString().padStart(2, '0');
-  const hours = date.getHours().toString().padStart(2, '0');
-  const minutes = date.getMinutes().toString().padStart(2, '0');
-  const seconds = date.getSeconds().toString().padStart(2, '0');
-
-  return `${year}${month}${day}T${hours}${minutes}${seconds}`;
+  // Local Warsaw time as YYYY-MM-DDTHH:MM:SS (converted to ICS format when written)
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Warsaw', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
+  }).formatToParts(date).map(x => [x.type, x.value]));
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}`;
 }
 
 function escapeIcsText(text: string): string {
