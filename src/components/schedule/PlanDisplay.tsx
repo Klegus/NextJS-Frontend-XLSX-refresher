@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Toggle } from '@/components/ui/Toggle';
 import { Plan } from '@/types/schedule';
-import { timeSinceUpdate, convertTimeToMinutes } from '@/lib/utils';
-import { censorLecturerNamesInHtml, isCensorshipEnabled } from '../../../utils/censor';
-import { EmailVerificationModal } from '@/components/ui/EmailVerificationModal';
+import { convertTimeToMinutes } from '@/lib/utils';
+import { useLanguage, localizeWeekdayHeaders } from '@/i18n';
+import { timeSinceUpdate, formatShortDate, formatFullDate } from '@/i18n/format';
 import { SuggestionModal } from '@/components/ui/SuggestionModal';
 
 interface PlanDisplayProps {
@@ -32,6 +32,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
     onFilterToggle,
     onMergeToggle
 }) => {
+    const { t, lang } = useLanguage();
     const containerRef = useRef<HTMLDivElement>(null);
     const [filteredHtml, setFilteredHtml] = useState(plan.html);
     const [status, setStatus] = useState<PlanStatus>({ isOnline: true, lastChecked: new Date() });
@@ -51,34 +52,13 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
         return true;
     });
     
-    // Check if censorship is enabled globally via environment variable
-    // W Next.js zmienne NEXT_PUBLIC_ są wbudowywane podczas buildu
-    // Domyślnie cenzura jest WŁĄCZONA, wyłącza się tylko gdy zmienna === 'false'
-    const isCensorshipEnabledGlobally = process.env.NEXT_PUBLIC_ENABLE_CENSORSHIP !== 'false';
-    
-    // Dodajemy stan dla kontroli cenzury i modala, tylko jeśli cenzura jest włączona globalnie
-    const [censorshipDisabled, setCensorshipDisabled] = useState(() => {
-        if (!isCensorshipEnabledGlobally) {
-            return true; // Cenzura jest zawsze wyłączona, jeśli jest wyłączona globalnie
-        }
-        
-        if (typeof window !== 'undefined') {
-            // Sprawdzamy czy cenzura jest wyłączona (użytkownik jest zweryfikowany)
-            return localStorage.getItem('verified_email') === 'true';
-        }
-        return false;
-    });
-    const [showModal, setShowModal] = useState(false);
+    // Lecturers' names arrive already in the right form: full with SSO sign-in,
+    // shortened on the server in public mode (see lib/access.ts)
 
     // Dodajemy stan dla modalu sugestii
     const [showSuggestionModal, setShowSuggestionModal] = useState(false);
 
     const filterPlanForCurrentWeek = (html: string, weekRange: { start: Date; end: Date }) => {
-        // Apply name censorship only if it's enabled globally
-        if (isCensorshipEnabledGlobally) {
-            html = censorLecturerNamesInHtml(html);
-        }
-
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
         const table = doc.querySelector('table');
@@ -95,10 +75,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                 const date = new Date(weekRange.start);
                 date.setDate(weekRange.start.getDate() + (index - 1));
                 const originalText = cell.textContent?.split('(')[0].trim() || '';
-                const formattedDate = date.toLocaleDateString('pl-PL', {
-                    day: '2-digit',
-                    month: '2-digit'
-                });
+                const formattedDate = formatShortDate(date, lang);
                 cell.textContent = `${originalText} (${formattedDate})`;
             }
         });
@@ -138,26 +115,18 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
 
         // Jeśli nie ma żadnych zajęć w tym tygodniu, zwróć komunikat
         if (!hasAnyLessonsInWeek) {
-            const weekStartStr = weekRange.start.toLocaleDateString('pl-PL', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric'
-            });
-            const weekEndStr = weekRange.end.toLocaleDateString('pl-PL', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric'
-            });
+            const weekStartStr = formatFullDate(weekRange.start, lang);
+            const weekEndStr = formatFullDate(weekRange.end, lang);
 
             return `
                 <div class="flex flex-col items-center justify-center py-16 px-4">
                     <div class="text-6xl mb-4">📚</div>
-                    <h2 class="text-2xl font-bold text-gray-700 mb-2">Brak zajęć w tym tygodniu</h2>
+                    <h2 class="text-2xl font-bold text-gray-700 mb-2">${t('plan.noLessonsTitle')}</h2>
                     <p class="text-gray-500 text-center max-w-md">
-                        W tygodniu ${weekStartStr} - ${weekEndStr} nie ma zaplanowanych zajęć.
+                        ${t('plan.noLessonsText', { start: weekStartStr, end: weekEndStr })}
                     </p>
                     <p class="text-sm text-gray-400 mt-4">
-                        Użyj strzałek nawigacji, aby przejrzeć inne tygodnie.
+                        ${t('plan.noLessonsHint')}
                     </p>
                 </div>
             `;
@@ -167,11 +136,6 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
     };
 
     const processHtml = (htmlContent: string) => {
-        // Apply name censorship only if it's enabled globally
-        if (isCensorshipEnabledGlobally) {
-            htmlContent = censorLecturerNamesInHtml(htmlContent);
-        }
-        
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlContent, 'text/html');
         const table = doc.querySelector('table');
@@ -253,41 +217,6 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
         onMergeToggle?.(newValue);
     };
 
-    // Funkcja obsługująca zmianę stanu cenzury
-    const handleCensorshipToggle = () => {
-        if (censorshipDisabled) {
-            // Jeśli cenzura jest wyłączona, włączamy ją ponownie
-            localStorage.removeItem('verified_email');
-            localStorage.removeItem('verified_email_address');
-            setCensorshipDisabled(false);
-            // Odświeżamy zawartość planu
-            updatePlanContent();
-        } else {
-            // Sprawdź, czy użytkownik jest już zweryfikowany
-            const verifiedEmail = localStorage.getItem('verified_email_address');
-            if (verifiedEmail) {
-                // Jeśli email jest już zweryfikowany, po prostu wyłączamy cenzurę
-                localStorage.setItem('verified_email', 'true');
-                setCensorshipDisabled(true);
-                // Odświeżamy zawartość planu
-                updatePlanContent();
-            } else {
-                // Jeśli nie jest zweryfikowany, wyświetlamy modal weryfikacji
-                setShowModal(true);
-            }
-        }
-    };
-
-    // Obsługa weryfikacji emaila
-    const handleEmailVerification = (verified: boolean) => {
-        if (verified) {
-            // Zakładamy, że localStorage został już ustawiony w komponencie modala
-            setCensorshipDisabled(true);
-            // Odświeżamy zawartość planu
-            updatePlanContent();
-        }
-    };
-
     // Funkcja do odświeżania zawartości planu
     const updatePlanContent = useCallback(() => {
         let processedHtml = processHtml(plan.html);
@@ -296,13 +225,13 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
             processedHtml = filterPlanForCurrentWeek(processedHtml, currentWeek);
         }
         
-        setFilteredHtml(processedHtml);
-    }, [plan.html, plan.category, currentWeek, filterEnabled, processHtml, filterPlanForCurrentWeek]);
+        setFilteredHtml(localizeWeekdayHeaders(processedHtml, lang));
+    }, [plan.html, plan.category, currentWeek, filterEnabled, processHtml, filterPlanForCurrentWeek, lang]);
 
     // Efekt dla aktualizacji planu gdy zmienia się status cenzury lub inne stany
     useEffect(() => {
         updatePlanContent();
-    }, [censorshipDisabled, filterEnabled, mergeEnabled, plan, currentWeek, updatePlanContent]);
+    }, [filterEnabled, mergeEnabled, plan, currentWeek, updatePlanContent]);
 
     const currentHighlightRef = useRef<HTMLTableCellElement | null>(null);
 
@@ -320,7 +249,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
     
             // Skip weekends regardless of category
             if (currentDay === 0 || currentDay === 6) {
-                onTimeSlotChange?.("Weekend! Czas wolny od zajęć 🎉", null);
+                onTimeSlotChange?.(t('plan.weekend'), null);
                 return;
             }
     
@@ -385,7 +314,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                 currentHighlightRef.current = null;
             }
         };
-    }, [plan, currentWeek]);
+    }, [plan, currentWeek, t]);
 
     useEffect(() => {
         const checkStatus = async () => {
@@ -415,10 +344,10 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                 <div className="flex items-center gap-1.5 mr-auto">
                     <div
                         className={`w-1.5 h-1.5 rounded-full ${status.isOnline ? 'bg-emerald-500' : 'bg-red-500'}`}
-                        title={status.isOnline ? 'Online' : 'Offline'}
+                        title={status.isOnline ? t('plan.online') : t('plan.offline')}
                     />
                     <span className="text-xs text-ink-muted">
-                        {timeSinceUpdate(plan.timestamp)}
+                        {timeSinceUpdate(plan.timestamp, lang)}
                     </span>
                 </div>
 
@@ -427,9 +356,9 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                         <Toggle
                             checked={filterEnabled}
                             onChange={handleFilterToggle}
-                            label="Filtruj tydzień"
+                            label={t('plan.filterWeek')}
                         />
-                        <span className="text-xs text-ink-muted select-none">Filtruj tydzień</span>
+                        <span className="text-xs text-ink-muted select-none">{t('plan.filterWeek')}</span>
                     </label>
                 )}
 
@@ -437,21 +366,11 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                     <Toggle
                         checked={mergeEnabled}
                         onChange={handleMergeToggle}
-                        label="Łącz komórki"
+                        label={t('plan.mergeCells')}
                     />
-                    <span className="text-xs text-ink-muted select-none">Łącz komórki</span>
+                    <span className="text-xs text-ink-muted select-none">{t('plan.mergeCells')}</span>
                 </label>
 
-                {isCensorshipEnabledGlobally && (
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                        <Toggle
-                            checked={censorshipDisabled}
-                            onChange={handleCensorshipToggle}
-                            label="Wykładowcy"
-                        />
-                        <span className="text-xs text-ink-muted select-none">Wykładowcy</span>
-                    </label>
-                )}
             </div>
 
             {/* Table */}
@@ -470,17 +389,9 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                     onClick={() => setShowSuggestionModal(true)}
                     className="px-3 py-1.5 text-xs"
                 >
-                    Zgłoś sugestię lub błąd
+                    {t('plan.suggest')}
                 </button>
             </div>
-
-            {isCensorshipEnabledGlobally && (
-                <EmailVerificationModal
-                    isOpen={showModal}
-                    onClose={() => setShowModal(false)}
-                    onVerify={handleEmailVerification}
-                />
-            )}
 
             <SuggestionModal
                 isOpen={showSuggestionModal}

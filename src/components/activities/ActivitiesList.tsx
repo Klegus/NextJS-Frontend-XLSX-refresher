@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Activity } from '@/types/schedule';
 import { ActivityCard } from './ActivityCard';
 import { getActivities } from '@/lib/api';
+import { useT } from '@/i18n';
 
 interface ActivitiesListProps {
   limit?: number;
@@ -12,6 +13,7 @@ export const ActivitiesList: React.FC<ActivitiesListProps> = ({
   limit = 10,
   autoRefresh = true
 }) => {
+    const t = useT();
     const [activities, setActivities] = useState<Activity[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -33,7 +35,7 @@ export const ActivitiesList: React.FC<ActivitiesListProps> = ({
       setActivities(response.activities);
       setError(null);
     } catch (err) {
-      setError('Nie udało się pobrać aktywności. Spróbuj odświeżyć stronę.');
+      setError('errors.activities');
     } finally {
       setLoading(false);
     }
@@ -68,12 +70,12 @@ export const ActivitiesList: React.FC<ActivitiesListProps> = ({
   if (error) {
     return (
       <div className="text-center py-6">
-        <p className="text-sm text-red-600 mb-3">{error}</p>
+        <p className="text-sm text-red-600 mb-3">{t('errors.activities')}</p>
         <button
           onClick={fetchActivities}
           className="px-4 py-2 text-sm"
         >
-          Spróbuj ponownie
+          {t('common.retry')}
         </button>
       </div>
     );
@@ -82,7 +84,7 @@ export const ActivitiesList: React.FC<ActivitiesListProps> = ({
   if (activities.length === 0) {
     return (
       <div className="text-center py-10 text-ink-muted text-sm">
-        Brak aktualnych aktywności
+        {t('activities.empty')}
       </div>
     );
   }

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useLanguage } from '@/i18n';
+import { formatDateTime } from '@/i18n/format';
 
 interface ChangeDetail {
   field: string;
@@ -37,6 +39,7 @@ interface PlanChangesProps {
 }
 
 export const PlanChanges: React.FC<PlanChangesProps> = ({ isOpen, onClose, planId, groupName }) => {
+  const { t, lang } = useLanguage();
   const [reports, setReports] = useState<ChangeReport[]>([]);
   const [loading, setLoading] = useState(false);
   const [expandedReport, setExpandedReport] = useState<number | null>(null);
@@ -77,8 +80,7 @@ export const PlanChanges: React.FC<PlanChangesProps> = ({ isOpen, onClose, planI
   };
 
   const formatDate = (ts: string) => {
-    const d = new Date(ts);
-    return d.toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return formatDateTime(new Date(ts), lang);
   };
 
   return (
@@ -91,11 +93,13 @@ export const PlanChanges: React.FC<PlanChangesProps> = ({ isOpen, onClose, planI
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
-            <h2 className="text-lg font-bold text-ink">Historia zmian</h2>
-            <p className="text-xs text-ink-muted mt-0.5">Ostatnie wykryte zmiany w planach zajęć</p>
+            <h2 className="text-lg font-bold text-ink">{t('changes.title')}</h2>
+            <p className="text-xs text-ink-muted mt-0.5">{t('changes.subtitle')}</p>
           </div>
           <button
             onClick={onClose}
+            aria-label={t('common.close')}
+            title={t('common.close')}
             className="!bg-transparent !border-none !shadow-none w-8 h-8 flex items-center justify-center text-ink-muted hover:text-ink !p-0"
           >
             ✕
@@ -112,7 +116,7 @@ export const PlanChanges: React.FC<PlanChangesProps> = ({ isOpen, onClose, planI
 
           {!loading && reports.length === 0 && (
             <div className="text-center py-12 text-ink-muted text-sm">
-              Brak wykrytych zmian w planach.
+              {t('changes.empty')}
             </div>
           )}
 
@@ -127,7 +131,7 @@ export const PlanChanges: React.FC<PlanChangesProps> = ({ isOpen, onClose, planI
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-xs font-mono text-ink-muted">{formatDate(report.timestamp)}</span>
                     <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[0.6875rem] font-semibold bg-wspia-red/10 text-wspia-red">
-                      {report.change_count} {report.change_count === 1 ? 'zmiana' : report.change_count < 5 ? 'zmiany' : 'zmian'}
+                      {t('changes.count', { n: report.change_count })}
                     </span>
                   </div>
                   <p className="text-sm font-medium text-ink truncate">{report.plan_name}</p>
@@ -152,7 +156,7 @@ export const PlanChanges: React.FC<PlanChangesProps> = ({ isOpen, onClose, planI
                         <span>{change.time}</span>
                         <span className={`${change.group === groupName ? 'font-semibold opacity-100' : 'opacity-60'}`}>
                           {change.group}
-                          {change.group === groupName && ' (Twoja grupa)'}
+                          {change.group === groupName && t('changes.yourGroup')}
                         </span>
                       </div>
 

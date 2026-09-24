@@ -1,5 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useAccessMode } from '@/components/auth/AccessContext';
 import { showToast } from '@/components/ui/toast';
+import { useLanguage } from '@/i18n';
+import { formatShortDate } from '@/i18n/format';
 
 interface WeekControlsProps {
     onPrevWeek: () => void;
@@ -37,12 +40,21 @@ interface WeekControlsProps {
     isMixedPlan = false,
     onShowChanges
   }) => {
-    const formatDate = (date: Date) => {
-      return date.toLocaleDateString('pl-PL', {
-        day: '2-digit',
-        month: '2-digit',
-      });
-    };
+    const { t, lang } = useLanguage();
+    const formatDate = (date: Date) => formatShortDate(date, lang);
+    const accessMode = useAccessMode();
+
+    // SSO mode: calendar apps can't send the session cookie, so the feed URL gets a
+    // signed token. Fetched up front - opening a window after an await would be
+    // blocked as a pop-up on mobile.
+    const [calendarToken, setCalendarToken] = useState<string | null>(null);
+    useEffect(() => {
+      if (accessMode !== 'sso') return;
+      fetch('/api/calendar/token')
+        .then(r => (r.ok ? r.json() : null))
+        .then(d => setCalendarToken(d?.token ?? null))
+        .catch(() => {});
+    }, [accessMode]);
 
     // Generate calendar subscription URL
     const generateSubscriptionUrl = (): string | null => {
@@ -67,14 +79,18 @@ interface WeekControlsProps {
       const protocol = window.location.protocol;
       const host = window.location.host;
 
-      return `${protocol}//${host}/api/calendar/subscribe/${planId}/${encodedGroupData}`;
+      const url = `${protocol}//${host}/api/calendar/subscribe/${planId}/${encodedGroupData}`;
+      if (accessMode === 'sso') {
+        return calendarToken ? `${url}?t=${encodeURIComponent(calendarToken)}` : null;
+      }
+      return url;
     };
 
     const handleCalendarSubscription = () => {
       const subscriptionUrl = generateSubscriptionUrl();
 
       if (!subscriptionUrl) {
-        alert('Nie można wygenerować linku subskrypcji - brak wymaganych danych planu.');
+        alert(t('week.subscriptionError'));
         return;
       }
 
@@ -88,17 +104,13 @@ interface WeekControlsProps {
       }
 
       if (isLocalhost) {
-        alert(
-          `Link skopiowany do schowka:\n${subscriptionUrl}\n\n` +
-          `Apple Calendar: Plik → Nowa subskrypcja kalendarza → wklej link\n` +
-          `Google Calendar: calendar.google.com → + Inne kalendarze → Z adresu URL → wklej`
-        );
+        alert(t('week.localhostCopied', { url: subscriptionUrl }));
       } else if (isAndroid) {
         // Android: Google Calendar URL scheme
         const googleCalUrl = `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(subscriptionUrl)}`;
         window.open(googleCalUrl, '_blank');
         showToast({
-          message: 'Otwieranie Google Calendar... Link też skopiowany do schowka.',
+          message: t('week.openingGoogle'),
           type: 'success'
         });
       } else if (isIOS) {
@@ -106,7 +118,7 @@ interface WeekControlsProps {
         const webcalUrl = subscriptionUrl.replace(/^https?:/, 'webcal:');
         window.location.href = webcalUrl;
         showToast({
-          message: 'Otwieranie kalendarza...',
+          message: t('week.openingCalendar'),
           type: 'success'
         });
       } else {
@@ -114,7 +126,7 @@ interface WeekControlsProps {
         const webcalUrl = subscriptionUrl.replace(/^https?:/, 'webcal:');
         window.location.href = webcalUrl;
         showToast({
-          message: 'Otwieranie kalendarza... Link też skopiowany do schowka.',
+          message: t('week.openingCalendarCopied'),
           type: 'success'
         });
       }
@@ -126,17 +138,19 @@ interface WeekControlsProps {
           <button
             onClick={onPrevWeek}
             disabled={isPrevDisabled}
+            aria-label={t('week.prevAria')}
             className="px-3 py-1.5 text-sm"
           >
-            ← <span className="hidden sm:inline">Poprzedni</span>
+            ← <span className="hidden sm:inline">{t('week.prev')}</span>
           </button>
 
           <button
             onClick={onNextWeek}
             disabled={isNextDisabled}
+            aria-label={t('week.nextAria')}
             className="sm:ml-2 px-3 py-1.5 text-sm order-last sm:order-none"
           >
-            <span className="hidden sm:inline">Następny</span> →
+            <span className="hidden sm:inline">{t('week.next')}</span> →
           </button>
         </div>
 
@@ -150,19 +164,17 @@ interface WeekControlsProps {
               <button
                 onClick={onShowChanges}
                 className="px-3 py-1.5 text-sm !border-amber-300 text-amber-700 hover:!bg-amber-50"
-                title="Historia zmian w planie"
+                title={t('week.changesTitle')}
               >
-                <span className="hidden sm:inline">Zmiany</span>
-                <span className="sm:hidden">Zmiany</span>
+                {t('week.changes')}
               </button>
             )}
             <button
               onClick={handleCalendarSubscription}
               className="px-3 py-1.5 text-sm"
-              title="Subskrybuj kalendarz"
+              title={t('week.calendarTitle')}
             >
-              <span className="hidden sm:inline">Kalendarz</span>
-              <span className="sm:hidden">Kalendarz</span>
+              {t('week.calendar')}
             </button>
           </div>
         )}

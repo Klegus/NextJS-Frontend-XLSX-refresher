@@ -1,90 +1,71 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifyAuthToken } from '@/lib/msauth-server';
+import { verifyAuthToken, verifyCalendarToken } from '@/lib/msauth-server';
+import { getAccessMode } from '@/lib/access';
 
-// Funkcja verifyAuthToken jest teraz importowana z msauth-server.ts
+// Always reachable, also in SSO mode: sign-in itself, maintenance status and
+// the files search engines / link previews need
+const PUBLIC_PATHS = [
+  '/login',
+  '/api/auth/',
+  '/api/status',
+  '/robots.txt',
+  '/sitemap.xml',
+  '/manifest.webmanifest',
+  '/opengraph-image',
+  '/icon',
+  '/favicon.ico',
+];
+
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
 
 export async function middleware(request: NextRequest) {
-  // Development bypass — gdy SKIP_AUTH=true, wyłączamy route guard całkowicie.
-  // Dzięki temu można pracować nad UI bez rejestrowania aplikacji w Azure AD.
-  if (process.env.SKIP_AUTH === 'true') {
-    return NextResponse.next();
-  }
+  const { pathname } = request.nextUrl;
+  const isApi = pathname.startsWith('/api/');
 
-  // Lista ścieżek publicznych nie wymagających uwierzytelnienia
-  const publicUrls = [
-    '/api/auth/signin',
-    '/api/auth/signout',
-    '/api/auth/session',
-    '/api/auth/csrf',
-    '/api/auth/callback',
-    '/api/auth/providers',
-    '/api/auth/error',
-    '/login',
-    '/favicon.ico',
-    '/_next',
-    '/public'
-  ];
-
-  // Sprawdź, czy żądana ścieżka jest publiczna
-  const isPublicRoute = publicUrls.some(url => request.nextUrl.pathname.startsWith(url));
-
-  // Obsługa żądań CORS preflight
   if (request.method === 'OPTIONS') {
-    return new NextResponse(null, {
-      status: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        'Access-Control-Max-Age': '86400',
-      },
-    });
+    return new NextResponse(null, { status: 200, headers: { ...CORS_HEADERS, 'Access-Control-Max-Age': '86400' } });
   }
 
-  // Obsługa nagłówków CORS dla żądań API (z wyjątkiem auth)
-  if (request.nextUrl.pathname.startsWith('/api') && !request.nextUrl.pathname.startsWith('/api/auth')) {
-    const response = NextResponse.next();
-
-    // Dodaj nagłówki CORS do wszystkich odpowiedzi
-    response.headers.set('Access-Control-Allow-Origin', '*');
-    response.headers.set('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-    return response;
+  // Public mode: everything is open (lecturers' names are shortened server-side)
+  if (getAccessMode() === 'public' || PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p))) {
+    return withCors(NextResponse.next(), isApi);
   }
 
-  // Jeśli jest to publiczna ścieżka, przepuść żądanie bez sprawdzania uwierzytelnienia
-  if (isPublicRoute) {
-    return NextResponse.next();
+  // SSO mode from here on: a valid session is required for pages and API alike
+  const session = request.cookies.get('auth-token')?.value;
+  const user = session ? await verifyAuthToken(session) : null;
+  if (user && user.scope !== 'calendar') {
+    return withCors(NextResponse.next(), isApi);
   }
 
-  // Pobierz token autoryzacji z ciasteczka
-  const authToken = request.cookies.get('auth-token')?.value;
-
-  // Sprawdź, czy token jest ważny
-  const isAuthenticated = authToken ? await verifyAuthToken(authToken) : null;
-
-  // Jeśli użytkownik nie jest uwierzytelniony, przekieruj na stronę logowania
-  if (!isAuthenticated) {
-    const url = new URL('/login', request.url);
-    url.searchParams.set('callbackUrl', request.nextUrl.pathname);
-    return NextResponse.redirect(url);
+  // Calendar apps have no cookies - the subscription link carries a scoped token
+  if (pathname.startsWith('/api/calendar/subscribe/')) {
+    const token = request.nextUrl.searchParams.get('t');
+    if (token && await verifyCalendarToken(token)) {
+      return withCors(NextResponse.next(), isApi);
+    }
   }
 
-  // W przeciwnym razie, przepuść żądanie (użytkownik jest uwierzytelniony)
-  return NextResponse.next();
+  if (isApi) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401, headers: CORS_HEADERS });
+  }
+  const url = new URL('/login', request.url);
+  url.searchParams.set('callbackUrl', pathname);
+  return NextResponse.redirect(url);
+}
+
+function withCors(response: NextResponse, isApi: boolean) {
+  if (isApi) {
+    for (const [key, value] of Object.entries(CORS_HEADERS)) response.headers.set(key, value);
+  }
+  return response;
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Dopasuj wszystkie ścieżki żądań z wyjątkiem tych zaczynających się od:
-     * - _next/static (pliki statyczne)
-     * - _next/image (pliki optymalizacji obrazów)
-     * - favicon.ico (plik favicon)
-     * - public (pliki publiczne)
-     */
-    '/((?!_next/static|_next/image|favicon.ico|public).*)',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|public).*)'],
 };

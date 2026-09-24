@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Comparison } from '@/types/schedule';
 import { getComparisons } from '@/lib/api';
+import { useLanguage } from '@/i18n';
+import { formatDateTime, parseServerDate } from '@/i18n/format';
 
 interface PlanComparisonsProps {
   planId: string;
@@ -11,6 +13,7 @@ export const PlanComparisons: React.FC<PlanComparisonsProps> = ({
   planId,
   groupId
 }) => {
+  const { t, lang } = useLanguage();
   const [comparisons, setComparisons] = useState<Comparison[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +38,7 @@ export const PlanComparisons: React.FC<PlanComparisonsProps> = ({
         ));
         setError(null);
       } catch (err) {
-        setError('Nie udało się pobrać porównań planów.');
+        setError(t('errors.comparisons'));
         console.error('Error fetching comparisons:', err);
       } finally {
         setLoading(false);
@@ -66,7 +69,7 @@ export const PlanComparisons: React.FC<PlanComparisonsProps> = ({
   if (comparisons.length === 0) {
     return (
       <p className="text-xl text-center text-gray-600">
-        Brak zmian w ostatnich porównaniach.
+        {t('comparisons.empty')}
       </p>
     );
   }
@@ -79,18 +82,18 @@ export const PlanComparisons: React.FC<PlanComparisonsProps> = ({
           className={`comparison-card ${colors[index % colors.length]} p-6 rounded-lg shadow-md border-l-4`}
         >
           <h3 className="text-xl font-semibold mb-3">
-            Porównanie z {new Date(comparison.timestamp).toLocaleString()}
+            {t('comparisons.title', { date: formatDateTime(parseServerDate(comparison.timestamp), lang) })}
           </h3>
           <p className="mb-1">
-            <strong>Nowszy plan:</strong>{' '}
-            {new Date(comparison.newer_plan_timestamp).toLocaleString()}
+            <strong>{t('comparisons.newer')}</strong>{' '}
+            {formatDateTime(parseServerDate(comparison.newer_plan_timestamp), lang)}
           </p>
           <p className="mb-1">
-            <strong>Starszy plan:</strong>{' '}
-            {new Date(comparison.older_plan_timestamp).toLocaleString()}
+            <strong>{t('comparisons.older')}</strong>{' '}
+            {formatDateTime(parseServerDate(comparison.older_plan_timestamp), lang)}
           </p>
           <div className="mt-3">
-            <h4 className="font-semibold mb-2">Zmiany:</h4>
+            <h4 className="font-semibold mb-2">{t('comparisons.changes')}</h4>
             <p>{comparison.results[groupId]}</p>
           </div>
         </div>

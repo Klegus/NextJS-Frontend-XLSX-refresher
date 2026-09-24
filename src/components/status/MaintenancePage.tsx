@@ -1,4 +1,9 @@
+'use client';
+
+import { useT } from '@/i18n';
+
 export const MaintenancePage: React.FC = () => {
+  const t = useT();
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
@@ -7,7 +12,7 @@ export const MaintenancePage: React.FC = () => {
         <div className="inline-flex items-center justify-center w-20 h-20 mb-6 bg-white rounded-2xl shadow-glass ring-1 ring-black/[0.04] overflow-hidden">
           <img
             src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSAvu7fXk3m4Lz5iwLKJHAPKlelKnT8CjI-Bg&s"
-            alt="WSPiA Logo"
+            alt={t('common.logoAlt')}
             className="w-14 h-14 object-contain"
           />
         </div>
@@ -17,16 +22,15 @@ export const MaintenancePage: React.FC = () => {
           {/* Status pill */}
           <div className="inline-flex items-center gap-2 px-3 py-1.5 mb-6 rounded-full bg-wspia-red/[0.06] ring-1 ring-wspia-red/15">
             <span className="w-1.5 h-1.5 rounded-full bg-wspia-red animate-pulse" />
-            <span className="text-xs font-semibold text-wspia-red tracking-wide uppercase">Przerwa techniczna</span>
+            <span className="text-xs font-semibold text-wspia-red tracking-wide uppercase">{t('maintenance.pill')}</span>
           </div>
 
           <h1 className="text-xl font-bold text-ink mb-3 tracking-tight">
-            Aktualizacja systemu
+            {t('maintenance.title')}
           </h1>
 
           <p className="text-sm text-ink-muted leading-relaxed mb-6">
-            Trwają prace techniczne nad planem zajęć.
-            System zostanie przywrócony automatycznie.
+            {t('maintenance.text')}
           </p>
 
           {/* Loading dots */}
@@ -44,7 +48,7 @@ export const MaintenancePage: React.FC = () => {
               ))}
             </div>
             <span className="text-xs text-ink-muted">
-              Trwa aktualizacja
+              {t('maintenance.updating')}
             </span>
           </div>
         </div>

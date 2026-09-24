@@ -6,60 +6,6 @@ export const formatDate = (date: Date): string => {
     });
   };
   
-  export const timeSinceUpdate = (timestamp: string): string => {
-    const now = new Date();
-    const updateTime = new Date(timestamp);
-    const diffInSeconds = Math.floor((now.getTime() - updateTime.getTime()) / 1000);
-
-    const days = Math.floor(diffInSeconds / 86400);
-    const hours = Math.floor((diffInSeconds % 86400) / 3600);
-    const minutes = Math.floor((diffInSeconds % 3600) / 60);
-
-    // For updates within the last 10 minutes, show exact time
-    if (diffInSeconds < 600) {  // 600 seconds = 10 minutes
-      const timeString = updateTime.toLocaleTimeString('pl-PL', {
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-      const dateString = updateTime.toLocaleDateString('pl-PL', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      });
-      return `${dateString} o ${timeString}`;
-    }
-
-    // For updates within the last 24 hours, show time and "X hours ago"
-    if (days === 0) {
-      const timeString = updateTime.toLocaleTimeString('pl-PL', {
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-
-      if (hours > 0) {
-        return `${hours} ${hours === 1 ? 'godzinę' : hours < 5 ? 'godziny' : 'godzin'} temu (${timeString})`;
-      } else if (minutes > 0) {
-        return `${minutes} ${minutes === 1 ? 'minutę' : minutes < 5 ? 'minuty' : 'minut'} temu`;
-      }
-    }
-
-    // For older updates, show date and how many days ago
-    const dateString = updateTime.toLocaleDateString('pl-PL', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-
-    if (days === 1) {
-      return `wczoraj (${dateString})`;
-    } else if (days > 1) {
-      return `${days} ${days < 5 ? 'dni' : 'dni'} temu (${dateString})`;
-    }
-
-    // Fallback - should not reach here
-    return `${dateString}`;
-  };
-  
   export const getWeekRange = (date: Date): { start: Date; end: Date } => {
     const startOfWeek = new Date(date);
     startOfWeek.setDate(date.getDate() - date.getDay() + (date.getDay() === 0 ? -6 : 1));
@@ -104,52 +50,6 @@ export const formatDate = (date: Date): string => {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
-  };
-
-  export const formatRelativeDate = (date: Date): string => {
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
-    const diffMinutes = Math.floor(diffTime / (1000 * 60));
-
-    // Check if dates are actually on the same day
-    const isToday = date.toDateString() === now.toDateString();
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const isYesterday = date.toDateString() === yesterday.toDateString();
-
-    // For updates today
-    if (isToday) {
-      if (diffMinutes < 60) {
-        return `${diffMinutes} ${diffMinutes === 1 ? 'minutę' : diffMinutes < 5 ? 'minuty' : 'minut'} temu`;
-      } else if (diffHours < 12) {
-        return `${diffHours} ${diffHours === 1 ? 'godzinę' : diffHours < 5 ? 'godziny' : 'godzin'} temu`;
-      } else {
-        return 'dzisiaj';
-      }
-    } else if (isYesterday) {
-      return 'wczoraj';
-    } else if (diffDays === 2) {
-      return 'przedwczoraj';
-    } else if (diffDays < 7) {
-      return `${diffDays} dni temu`;
-    } else if (diffDays < 14) {
-      return 'tydzień temu';
-    } else if (diffDays < 30) {
-      const weeks = Math.floor(diffDays / 7);
-      return `${weeks} ${weeks === 1 ? 'tydzień' : weeks < 5 ? 'tygodnie' : 'tygodni'} temu`;
-    } else if (diffDays < 60) {
-      return 'miesiąc temu';
-    } else {
-      // For older dates, show the actual date
-      const dateString = date.toLocaleDateString('pl-PL', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      });
-      return dateString;
-    }
   };
 
 // Funkcje do eksportu zajęć do kalendarza

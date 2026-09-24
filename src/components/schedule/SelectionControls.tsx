@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getFaculties, getPlans } from '@/lib/api';
 import { SelectionState, PlanGroup } from '@/types/schedule';
+import { useLanguage, useT, TKey } from '@/i18n';
+import { formatPlanLabel } from '@/i18n/format';
 
 interface SelectionControlsProps {
   onSelectionChange: (selection: Partial<SelectionState>) => void;
@@ -12,19 +14,29 @@ interface SelectionControlsProps {
 interface PlanGroup {
   id: string;
   name: string;
+  short_name?: string;
+  display_name?: string;
+  year?: number | null;
+  semester?: number | null;
+  degree?: string | null;
+  variant?: string | null;
   groups: string[];
   timestamp: string;
+  mixed?: boolean;
 }
 
 const LAST_SELECTION_KEY = 'lastPlanSelection';
 
 // Add a LoadingIndicator component
-const LoadingIndicator = () => (
-  <div className="flex items-center justify-center py-2">
-    <div className="w-5 h-5 border-2 border-wspia-red border-t-transparent rounded-full animate-spin mr-2"></div>
-    <span className="text-wspia-gray text-sm">Ładowanie...</span>
-  </div>
-);
+const LoadingIndicator = () => {
+  const t = useT();
+  return (
+    <div className="flex items-center justify-center py-2">
+      <div className="w-5 h-5 border-2 border-wspia-red border-t-transparent rounded-full animate-spin mr-2"></div>
+      <span className="text-wspia-gray text-sm">{t('common.loading')}</span>
+    </div>
+  );
+};
 
 export const SelectionControls: React.FC<SelectionControlsProps> = ({
   onSelectionChange,
@@ -40,13 +52,14 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
       return initialSelection;
     });
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [error, setError] = useState<TKey | null>(null);
+    const { t, lang } = useLanguage();
     const [hasRestoredState, setHasRestoredState] = useState(false);
 
   const categories = [
-    { value: "st", label: "Studia Stacjonarne" },
-    { value: "nst", label: "Studia Niestacjonarne" },
-    { value: "nst_puw", label: "Studia Niestacjonarne PUW" }
+    { value: "st", label: t('selection.categories.st') },
+    { value: "nst", label: t('selection.categories.nst') },
+    { value: "nst_puw", label: t('selection.categories.nst_puw') }
   ];
 
   // Restore saved selection on initial mount
@@ -79,7 +92,7 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
           setError(null);
         } catch (err) {
           console.error('Error loading faculties:', err);
-          setError('Nie udało się załadować kierunków');
+          setError('errors.faculties');
           setFaculties([]);
         } finally {
           setLoading(false);
@@ -88,18 +101,32 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
     };
     loadFaculties();
   }, [selection.category]);
+  // The two-step picker (base group + specialization) only works when a plan has
+  // both kinds of groups; plans flagged mixed for other reasons use the plain list
+  const normalizeMixedPlans = <T extends Record<string, { mixed?: boolean; groups?: unknown }>>(data: T): T => {
+    const result = { ...data };
+    for (const [id, plan] of Object.entries(result)) {
+      if (!plan?.mixed) continue;
+      const names = Array.isArray(plan.groups) ? plan.groups as string[] : Object.keys((plan.groups as object) || {});
+      const hasBase = names.some(g => /^grupa \d+/i.test(g) && !g.includes('Sp.'));
+      const hasSpec = names.some(g => g.includes('Sp.') || !/^grupa \d+/i.test(g));
+      if (!(hasBase && hasSpec)) (result as Record<string, unknown>)[id] = { ...plan, mixed: false };
+    }
+    return result;
+  };
+
   const renderGroups = (filterType?: 'base' | 'specialization') => {
     if (!selection.plan || !plans[selection.plan]) {
       // If we have a saved group, show it as the only option while plans load
       if (selection.group) {
         return (
           <>
-            <option value="">Wybierz grupę</option>
+            <option value="">{t('selection.groupPlaceholder')}</option>
             <option value={selection.group}>{selection.group}</option>
           </>
         );
       }
-      return <option value="">Najpierw wybierz plan</option>;
+      return <option value="">{t('selection.planFirst')}</option>;
     }
 
     const selectedPlan = plans[selection.plan];
@@ -131,7 +158,7 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
 
     return (
       <>
-        {filterType !== 'specialization' && <option value="">Wybierz grupę</option>}
+        {filterType !== 'specialization' && <option value="">{t('selection.groupPlaceholder')}</option>}
         {filteredGroups.map(groupName => (
           <option key={groupName} value={groupName}>
             {groupName}
@@ -145,7 +172,7 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
       if (selection.category && selection.faculty) {
         setLoading(true);
         try {
-          const data = await getPlans(selection.category, selection.faculty);
+          const data = normalizeMixedPlans(await getPlans(selection.category, selection.faculty));
           setPlans(data);
           setError(null);
 
@@ -201,7 +228,7 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
           }
         } catch (err) {
           console.error('Error loading plans:', err);
-          setError('Nie udało się załadować planów');
+          setError('errors.plans');
           setPlans({});
         } finally {
           setLoading(false);
@@ -210,6 +237,13 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
     };
     loadPlans();
   }, [selection.category, selection.faculty, hasRestoredState]);
+
+  // Every change of the selection is remembered in the browser
+  const persistSelection = (value: Partial<SelectionState>) => {
+    try {
+      localStorage.setItem(LAST_SELECTION_KEY, JSON.stringify(value));
+    } catch { /* storage unavailable */ }
+  };
 
   const handleSelectionChange = (field: keyof SelectionState, value: string) => {
     const newSelection = { ...selection, [field]: value };
@@ -276,7 +310,7 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
     <div className="space-y-4 transition-all duration-300 ease-in-out w-full">
       {error && (
         <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
-          <p className="text-red-700">{error}</p>
+          <p className="text-red-700">{t(error)}</p>
         </div>
       )}
 
@@ -284,7 +318,7 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
 
       <div className={`select-wrapper ${selection.category ? 'active' : ''}`}>
         <label className="block text-wspia-gray font-medium mb-2">
-          Wybierz tryb studiów:
+          {t('selection.categoryLabel')}
         </label>
         <select
           className="w-full p-3 border rounded-lg shadow-sm focus:border-wspia-red focus:ring-1 focus:ring-wspia-red"
@@ -292,7 +326,7 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
           onChange={(e) => handleSelectionChange('category', e.target.value)}
           disabled={loading}
         >
-          <option value="">Wybierz tryb studiów</option>
+          <option value="">{t('selection.categoryPlaceholder')}</option>
           {categories.map(({ value, label }) => (
             <option key={value} value={value}>{label}</option>
           ))}
@@ -302,7 +336,7 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
       {selection.category && (
         <div className={`select-wrapper animate-slideDown ${selection.faculty ? 'active' : ''}`}>
           <label className="block text-wspia-gray font-medium mb-2">
-            Wybierz kierunek:
+            {t('selection.facultyLabel')}
           </label>
           <select
             className="w-full p-3 border rounded-lg shadow-sm focus:border-wspia-red focus:ring-1 focus:ring-wspia-red"
@@ -310,7 +344,7 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
             onChange={(e) => handleSelectionChange('faculty', e.target.value)}
             disabled={loading}
           >
-            <option value="">Wybierz kierunek</option>
+            <option value="">{t('selection.facultyPlaceholder')}</option>
             {faculties.sort().map((faculty) => (
               <option key={faculty} value={faculty}>{faculty}</option>
             ))}
@@ -321,17 +355,18 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
       {selection.faculty && (
         <div className={`select-wrapper animate-slideDown ${selection.plan ? 'active' : ''}`}>
           <label className="block text-wspia-gray font-medium mb-2">
-            Wybierz plan:
+            {t('selection.planLabel')}
           </label>
           <select
             className="w-full p-3 border rounded-lg shadow-sm focus:border-wspia-red focus:ring-1 focus:ring-wspia-red"
             value={selection.plan || ''}
             onChange={(e) => handleSelectionChange('plan', e.target.value)}
           >
-            <option value="">Wybierz plan</option>
-            {Object.values(plans).sort((a, b) => a.name.localeCompare(b.name)).map((plan) => (
-              <option key={plan.id} value={plan.id}>
-                {plan.name}
+            <option value="">{t('selection.planPlaceholder')}</option>
+            {/* API returns plans ordered by degree, year and variant */}
+            {Object.values(plans).map((plan) => (
+              <option key={plan.id} value={plan.id} title={plan.name}>
+                {formatPlanLabel(plan, selection.category, lang)}
               </option>
             ))}
           </select>
@@ -342,7 +377,7 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
         <>
           <div className="select-wrapper animate-slideDown">
             <label className="block text-wspia-gray font-medium mb-2">
-              Wybierz grupę:
+              {t('selection.groupLabel')}
             </label>
             <select
               key={`group-${selection.plan}-${plans[selection.plan!]?.groups ? Object.keys(plans[selection.plan!].groups).join(',') : 'loading'}`}
@@ -361,16 +396,19 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
                   };
                   setSelection(newSelection);
                   onSelectionChange(newSelection);
+                  persistSelection(newSelection);
                 } else {
-                  // For normal plans, just update the group
+                  // For normal plans, just update the group; the flag follows the
+                  // plan itself so a stale planMixed from storage cannot stick
                   const newSelection = {
                     ...selection,
                     group: e.target.value,
-                    // Don't override planMixed if it's already set
-                    planMixed: selection.planMixed !== undefined ? selection.planMixed : false
+                    planMixed: false,
+                    selectedGroups: [],
                   };
                   setSelection(newSelection);
                   onSelectionChange(newSelection);
+                  persistSelection(newSelection);
                 }
               }}
             >
@@ -382,7 +420,7 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
           {plans[selection.plan]?.mixed && selection.group && (
             <div className="select-wrapper animate-slideDown mt-4">
               <label className="block text-wspia-gray font-medium mb-2">
-                Wybierz specjalizację:
+                {t('selection.specLabel')}
               </label>
               <select
                 key={`spec-${selection.plan}-${Object.keys(plans).length}`}
@@ -405,7 +443,7 @@ export const SelectionControls: React.FC<SelectionControlsProps> = ({
                   }
                 }}
               >
-                <option value="">Wybierz specjalizację</option>
+                <option value="">{t('selection.specPlaceholder')}</option>
                 {renderGroups('specialization')}
               </select>
             </div>

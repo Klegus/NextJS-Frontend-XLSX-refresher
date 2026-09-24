@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import Head from 'next/head';
+import { useState, useEffect, useMemo } from 'react';
 import { MaintenancePage } from '@/components/status/MaintenancePage';
 import { checkServerStatus, isMaintenanceMode as checkMaintenance } from '@/api/serverStatus';
 import { SelectionControls } from '@/components/schedule/SelectionControls';
@@ -15,6 +14,18 @@ import { Plan, SelectionState } from '@/types/schedule';
 import { getPlan, getMixedPlanGroups, getPlanMetadata } from '@/lib/api';
 import { mergeHTMLTables } from '@/lib/htmlMerger';
 import { PlanChanges } from '@/components/schedule/PlanChanges';
+import { PlanNotes } from '@/components/schedule/PlanNotes';
+import { useLanguage, TKey } from '@/i18n';
+
+// Plan hidden by source validation (backend 423) gets its own message.
+// Zwracamy klucz tłumaczenia – dla 423 zawsze komunikat frontendu (backend zwraca tekst tylko po polsku)
+function planErrorMessage(err: unknown): TKey {
+  const response = (err as { response?: { status?: number } })?.response;
+  if (response?.status === 423) {
+    return 'errors.planVerification';
+  }
+  return 'errors.planLoad';
+}
 
 // Stałe dla localStorage
 const MERGE_TOGGLE_KEY = 'planMergeEnabled';
@@ -32,7 +43,8 @@ export default function HomePage() {
     const now = new Date();
     return getWeekRange(shouldShowNextWeek() ? new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000) : now);
   });
-  const [error, setError] = useState<string | null>(null);
+  const { t } = useLanguage();
+  const [error, setError] = useState<TKey | null>(null);
   const [currentTimeSlot, setCurrentTimeSlot] = useState<string | null>(null);
   const [nextTimeSlot, setNextTimeSlot] = useState<string | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
@@ -77,7 +89,7 @@ export default function HomePage() {
         return () => clearInterval(interval);
       } catch (error) {
         console.error('Błąd podczas sprawdzania statusu serwera:', error);
-        setError('Nie udało się sprawdzić statusu serwera');
+        setError('errors.serverStatus');
       } finally {
         setInitialLoading(false);
       }
@@ -126,20 +138,19 @@ export default function HomePage() {
             console.log('Received HTML for groups:', Object.keys(response.htmls)); // Debug log
 
             // Merge the HTML tables client-side
-            const mergedHtml = mergeHTMLTables(response.htmls);
-            console.log('Merged HTML created'); // Debug log
-
+            // Merge happens in displayPlan (translated labels)
             setPlan({
               id: `${selection.plan}-mixed`,
-              html: mergedHtml,
+              html: '',
               htmlPerGroup: response.htmls,
+              notes: response.notes,
               timestamp: response.timestamp,
               category: response.category || selection.category || null,
               mixed: true
             });
             setError(null);
           } catch (err) {
-            setError('Nie udało się załadować planu. Spróbuj ponownie później.');
+            setError(planErrorMessage(err));
             console.error('Failed to load mixed plan:', err);
           } finally {
             setPlanLoading(false);
@@ -161,7 +172,7 @@ export default function HomePage() {
           setPlan(newPlan);
           setError(null);
         } catch (err) {
-          setError('Nie udało się załadować planu. Spróbuj ponownie później.');
+          setError(planErrorMessage(err));
           console.error('Failed to load plan:', err);
         } finally {
           setPlanLoading(false);
@@ -174,6 +185,30 @@ export default function HomePage() {
 
     loadPlan();
   }, [selection.plan, selection.group, selection.selectedGroups, isPlanMixed]);
+
+  // Scalony plan mieszany budujemy przy renderze, żeby etykiety podążały za językiem
+  const displayPlan = useMemo(() => {
+    if (!plan?.mixed || !plan.htmlPerGroup) return plan;
+    return {
+      ...plan,
+      html: mergeHTMLTables(plan.htmlPerGroup, {
+        noData: t('merge.noData'),
+        noTables: t('merge.noTables'),
+        mergedFrom: t('merge.mergedFrom'),
+        conflictHint: t('merge.conflictHint'),
+      }),
+    };
+  }, [plan, t]);
+
+  // Generate dynamic page title
+  const pageTitle = selection.group
+    ? t('page.metaTitleGroup', { group: `${selection.group}${selection.specialization ? ` - ${selection.specialization}` : ''}` })
+    : t('page.metaTitleDefault');
+
+  // Browser tab title follows the chosen group (search engines get it from layout metadata)
+  useEffect(() => {
+    document.title = pageTitle;
+  }, [pageTitle]);
 
   if (initialLoading) {
     return <LoadingSpinner />;
@@ -215,54 +250,10 @@ export default function HomePage() {
     }
   };
 
-  // Generate dynamic page title
-  const pageTitle = selection.group
-    ? `Plan zajęć ${selection.group}${selection.specialization ? ` - ${selection.specialization}` : ''} | WSPA Lublin`
-    : 'Plan Zajęć WSPA Lublin - Nieoficjalny Rozkład Zajęć';
 
-  // Structured data for SEO
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@type": "WebApplication",
-    "name": "Plan Zajęć WSPA Lublin",
-    "description": "Nieoficjalny plan zajęć Wyższej Szkoły Prawa i Administracji w Lublinie",
-    "url": "https://planinf.pl",
-    "applicationCategory": "EducationalApplication",
-    "operatingSystem": "Any",
-    "provider": {
-      "@type": "EducationalOrganization",
-      "name": "Wyższa Szkoła Prawa i Administracji w Lublinie",
-      "alternateName": "WSPA Lublin",
-      "url": "https://wspa.lublin.pl",
-      "address": {
-        "@type": "PostalAddress",
-        "addressLocality": "Lublin",
-        "addressCountry": "PL"
-      }
-    },
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "PLN"
-    }
-  };
 
   return (
     <>
-      <Head>
-        <title>{pageTitle}</title>
-        <meta name="description" content={
-          selection.group
-            ? `Plan zajęć grupy ${selection.group} na WSPA w Lublinie. Sprawdź aktualny rozkład zajęć, sale i prowadzących.`
-            : 'Nieoficjalny plan zajęć WSPA Lublin. Sprawdź rozkład zajęć dla wszystkich kierunków i grup.'
-        } />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="canonical" href={`https://planinf.pl${selection.group ? `?group=${encodeURIComponent(selection.group)}` : ''}`} />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-        />
-      </Head>
       <main className="min-h-screen">
       {initialLoading && <LoadingSpinner />}
 
@@ -272,14 +263,14 @@ export default function HomePage() {
           <div className="inline-flex items-center justify-center w-28 h-28 sm:w-32 sm:h-32 mb-6 bg-white rounded-3xl shadow-glass overflow-hidden ring-1 ring-black/[0.04]">
             <img
               src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSAvu7fXk3m4Lz5iwLKJHAPKlelKnT8CjI-Bg&s"
-              alt="WSPiA Logo"
+              alt={t('common.logoAlt')}
               className="w-20 h-20 sm:w-24 sm:h-24 object-contain"
             />
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-ink mb-1.5">
             {selection.faculty
               ? selection.faculty
-              : 'Plan zajęć'}
+              : t('header.title')}
           </h1>
           {selection.group && (
             <p className="text-base sm:text-lg text-ink-muted font-medium mt-1">
@@ -287,7 +278,7 @@ export default function HomePage() {
             </p>
           )}
           <p className="text-xs text-ink-muted/50 mt-2 tracking-widest uppercase font-medium">
-            WSPA Lublin · {new Date().getMonth() >= 9 ? `${new Date().getFullYear()}/${new Date().getFullYear() + 1}` : `${new Date().getFullYear() - 1}/${new Date().getFullYear()}`}
+            {t('header.yearLabel', { years: new Date().getMonth() >= 8 ? `${new Date().getFullYear()}/${new Date().getFullYear() + 1}` : `${new Date().getFullYear() - 1}/${new Date().getFullYear()}` })}
           </p>
         </header>
 
@@ -320,14 +311,14 @@ export default function HomePage() {
               <div className="absolute inset-0 flex justify-center items-center bg-white/60 z-10 rounded-2xl backdrop-blur-md">
                 <div className="flex flex-col items-center">
                   <div className="w-8 h-8 border-2 border-wspia-red border-t-transparent rounded-full animate-spin"></div>
-                  <p className="mt-3 text-ink-muted text-sm">Ładowanie planu...</p>
+                  <p className="mt-3 text-ink-muted text-sm">{t('page.loadingPlan')}</p>
                 </div>
               </div>
             )}
 
             {error && (
               <div className="bg-red-50/80 backdrop-blur-sm border border-red-200 rounded-xl p-4 mb-4">
-                <p className="text-red-700 text-sm">{error}</p>
+                <p className="text-red-700 text-sm">{t(error)}</p>
               </div>
             )}
 
@@ -344,7 +335,7 @@ export default function HomePage() {
                   currentWeek={currentWeek}
                   isPrevDisabled={weekOffset === 0}
                   isNextDisabled={false}
-                  planHtml={plan.html}
+                  planHtml={displayPlan?.html}
                   mergeEnabled={mergeEnabled}
                   isFilteringEnabled={filterEnabled}
                   onFilterToggle={handleFilterToggle}
@@ -358,7 +349,7 @@ export default function HomePage() {
 
                 <div className="glass-card overflow-hidden">
                   <PlanDisplay
-                    plan={plan}
+                    plan={displayPlan ?? plan}
                     currentWeek={currentWeek}
                     onTimeSlotChange={(current, next) => {
                       setCurrentTimeSlot(current);
@@ -368,6 +359,11 @@ export default function HomePage() {
                     onMergeToggle={handleMergeToggle}
                   />
                 </div>
+                <PlanNotes
+                  notes={plan.notes}
+                  planId={selection.plan}
+                  groups={selection.selectedGroups?.length ? selection.selectedGroups : selection.group ? [selection.group] : []}
+                />
               </div>
             )}
           </div>
@@ -382,13 +378,13 @@ export default function HomePage() {
         <footer className="mt-16 pt-8 pb-6 border-t border-gray-200/60">
           <div className="text-center space-y-2">
             <p className="text-sm font-medium text-ink">
-              Plan Zajęć WSPA Lublin
+              {t('footer.title')}
             </p>
             <p className="text-xs text-ink-muted">
-              Nieoficjalne narzędzie · Działa za pozwoleniem uczelni
+              {t('footer.unofficial')}
             </p>
             <p className="text-xs text-ink-muted/60">
-              © {new Date().getFullYear()} · Stworzone dla społeczności WSPA
+              {t('footer.madeFor', { year: new Date().getFullYear() })}
             </p>
           </div>
         </footer>

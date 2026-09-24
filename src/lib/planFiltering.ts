@@ -1,18 +1,10 @@
 import { Plan, WeekRange } from '@/types/schedule';
-import { censorLecturerNamesInHtml, isCensorshipEnabled } from '../../utils/censor';
 
 export function filterPlanForCurrentWeek(
   planHtml: string,
   weekRange: WeekRange,
   category: string | null
 ): string {
-  // Apply name censorship only if it's enabled globally via environment variable
-  // W Next.js zmienne NEXT_PUBLIC_ są wbudowywane podczas buildu
-  // Domyślnie cenzura jest WŁĄCZONA, wyłącza się tylko gdy zmienna === 'false'
-  if (process.env.NEXT_PUBLIC_ENABLE_CENSORSHIP !== 'false') {
-    planHtml = censorLecturerNamesInHtml(planHtml);
-  }
-  
   const parser = new DOMParser();
   const doc = parser.parseFromString(planHtml, 'text/html');
   const table = doc.querySelector('table');

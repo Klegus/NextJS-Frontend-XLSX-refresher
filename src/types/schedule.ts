@@ -5,8 +5,14 @@ export interface ServerStatus {
   check_interval?: number;
 }
 
+export interface PlanNotes {
+  exams: { scope: string | null; subjects: string[] }[];
+  info: { title: string | null; items: string[] }[];
+}
+
 export interface Plan {
   id: string;
+  notes?: PlanNotes | null; // exams + extra info from around the Excel table
   html: string;
   htmlPerGroup?: Record<string, string>; // Individual HTML for each group in mixed plans
   timestamp: string;
@@ -65,6 +71,12 @@ export interface WeekRange {
 export interface PlanGroup {
   id: string;
   name: string;
+  short_name?: string; // e.g. "rok 2, semestr 3 · I stopnia · PUW · zjazdy on-line"
+  display_name?: string; // full readable name incl. faculty
+  year?: number | null; // structured fields used to build a translated label
+  semester?: number | null;
+  degree?: string | null; // "I stopnia" | "II stopnia" | "jednolite magisterskie"
+  variant?: string | null; // e.g. "zjazdy on-line", comma-joined when several
   groups: string[] | Record<string, any>; // Can be array or object from API
   timestamp: string;
   mixed?: boolean; // Flag for mixed plans

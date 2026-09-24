@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { showToast } from '@/components/ui/toast';
+import { useT } from '@/i18n';
 
 interface SuggestionModalProps {
   isOpen: boolean;
@@ -7,6 +8,7 @@ interface SuggestionModalProps {
 }
 
 export const SuggestionModal: React.FC<SuggestionModalProps> = ({ isOpen, onClose }) => {
+  const t = useT();
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [remainingToday, setRemainingToday] = useState<number | null>(null);
@@ -42,12 +44,12 @@ export const SuggestionModal: React.FC<SuggestionModalProps> = ({ isOpen, onClos
     e.preventDefault();
     
     if (!content.trim()) {
-      showToast({ message: 'Treść sugestii nie może być pusta', type: 'error' });
+      showToast({ message: t('suggestion.empty'), type: 'error' });
       return;
     }
     
     if (characterCount > MAX_CHARS) {
-      showToast({ message: `Treść sugestii nie może przekraczać ${MAX_CHARS} znaków`, type: 'error' });
+      showToast({ message: t('suggestion.tooLong', { max: MAX_CHARS }), type: 'error' });
       return;
     }
     
@@ -66,7 +68,7 @@ export const SuggestionModal: React.FC<SuggestionModalProps> = ({ isOpen, onClos
       
       if (data.success) {
         showToast({ 
-          message: `Sugestia została wysłana pomyślnie.`, 
+          message: t('suggestion.sent'), 
           type: 'success' 
         });
         // Ciche aktualizowanie pozostałych sugestii
@@ -77,14 +79,14 @@ export const SuggestionModal: React.FC<SuggestionModalProps> = ({ isOpen, onClos
       } else {
         // Obsługa typowych błędów
         if (response.status === 429) {
-          showToast({ message: 'Przekroczono dzienny limit sugestii. Spróbuj ponownie jutro.', type: 'error' });
+          showToast({ message: t('suggestion.limit'), type: 'error' });
         } else {
-          showToast({ message: data.message || 'Wystąpił błąd podczas wysyłania sugestii', type: 'error' });
+          showToast({ message: data.message || t('suggestion.error'), type: 'error' });
         }
       }
     } catch (error) {
       console.error('Błąd podczas wysyłania sugestii:', error);
-      showToast({ message: 'Nie udało się wysłać sugestii. Spróbuj ponownie później.', type: 'error' });
+      showToast({ message: t('suggestion.failed'), type: 'error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -101,18 +103,18 @@ export const SuggestionModal: React.FC<SuggestionModalProps> = ({ isOpen, onClos
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
         <div className="p-6">
-          <h2 className="text-2xl font-bold text-wspia-gray mb-4">Zgłoś sugestię</h2>
+          <h2 className="text-2xl font-bold text-wspia-gray mb-4">{t('suggestion.title')}</h2>
           
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
               <label htmlFor="suggestion" className="block text-sm font-medium text-gray-700 mb-2">
-                Treść sugestii lub zgłoszenia błędu
+                {t('suggestion.label')}
               </label>
               <textarea
                 id="suggestion"
                 className={`w-full p-3 border rounded-md ${characterCount > MAX_CHARS ? 'border-red-500' : 'border-gray-300'}`}
                 rows={5}
-                placeholder="Opisz swoje sugestie lub zgłoś błąd w planie zajęć..."
+                placeholder={t('suggestion.placeholder')}
                 value={content}
                 onChange={handleContentChange}
                 disabled={isSubmitting}
@@ -129,14 +131,14 @@ export const SuggestionModal: React.FC<SuggestionModalProps> = ({ isOpen, onClos
                 onClick={onClose}
                 disabled={isSubmitting}
               >
-                Anuluj
+                {t('common.cancel')}
               </button>
               <button
                 type="submit"
                 className="px-4 py-2 bg-wspia-red text-gray-700 rounded-md hover:bg-red-700 disabled:opacity-50"
                 disabled={isSubmitting || !content.trim() || characterCount > MAX_CHARS || remainingToday === 0}
               >
-                {isSubmitting ? 'Wysyłanie...' : 'Wyślij sugestię'}
+                {isSubmitting ? t('suggestion.sending') : t('suggestion.send')}
               </button>
             </div>
           </form>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { getServerStatus } from '@/lib/api';
 import { ServerStatus } from '@/types/schedule';
+import { useT } from '@/i18n';
 
 interface ServerStatusIndicatorProps {
   initialStatus?: ServerStatus;
@@ -11,6 +12,7 @@ interface ServerStatusIndicatorProps {
 export const ServerStatusIndicator: React.FC<ServerStatusIndicatorProps> = ({
   initialStatus
 }) => {
+  const t = useT();
   const [status, setStatus] = useState<ServerStatus>(initialStatus || {
     maintenance_mode: false,
     status: 'unknown',
@@ -45,9 +47,9 @@ export const ServerStatusIndicator: React.FC<ServerStatusIndicatorProps> = ({
   };
 
   const getStatusText = () => {
-    if (status.status === 'active') return 'Online';
-    if (status.maintenance_mode) return 'Przerwa techniczna';
-    return 'Offline';
+    if (status.status === 'active') return t('plan.online');
+    if (status.maintenance_mode) return t('maintenance.pill');
+    return t('plan.offline');
   };
 
   return (

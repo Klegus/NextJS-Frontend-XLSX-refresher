@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-const API_URL = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://172.30.0.20';
+import { API_URL } from '@/lib/config';
 
 export async function GET(request: Request) {
   try {

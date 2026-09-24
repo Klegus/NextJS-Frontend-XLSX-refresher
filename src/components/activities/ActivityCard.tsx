@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Activity } from '@/types/schedule';
-import { formatRelativeDate } from '@/lib/utils';
+import { useLanguage } from '@/i18n';
+import { formatRelativeDate, parseServerDate } from '@/i18n/format';
 
 interface ActivityCardProps {
   activity: Activity;
@@ -13,6 +14,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
   isNew = false,
   onRead
 }) => {
+  const { t, lang } = useLanguage();
   const [isExpanded, setIsExpanded] = useState(false);
 
   const handleExpandClick = () => {
@@ -39,7 +41,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
                  target="_blank"
                  rel="noopener noreferrer"
                  className="text-sm font-medium text-wspia-red hover:text-wspia-red/70 transition-colors inline-flex items-center gap-1">
-                Otwórz folder
+                {t('activities.openFolder')}
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
                         d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
@@ -56,7 +58,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
                target="_blank"
                rel="noopener noreferrer"
                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-lg bg-wspia-red hover:bg-wspia-red/90 transition-all hover:shadow-md">
-              Otwórz
+              {t('activities.open')}
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
               </svg>
@@ -83,14 +85,14 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
                 onClick={handleExpandClick}
                 className="!bg-transparent !border-none !shadow-none !p-0 text-sm font-medium text-wspia-red hover:!bg-transparent hover:text-wspia-red/70"
               >
-                {isExpanded ? 'Zwiń' : 'Rozwiń'} →
+                {isExpanded ? t('activities.collapse') : t('activities.expand')} →
               </button>
               {activity.url && (
                 <a href={activity.url}
                    target="_blank"
                    rel="noopener noreferrer"
                    className="text-sm text-ink-muted hover:text-wspia-red transition-colors">
-                  Przejdź do zasobu →
+                  {t('activities.goToResource')}
                 </a>
               )}
             </div>
@@ -112,7 +114,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
         <div className="flex items-center gap-2 min-w-0">
           {isNew && (
             <span className="shrink-0 inline-block px-1.5 py-0.5 text-[0.6875rem] font-semibold bg-wspia-red text-white rounded">
-              Nowe
+              {t('activities.new')}
             </span>
           )}
           <h3 className="text-[0.9375rem] font-semibold text-ink truncate">
@@ -120,7 +122,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
           </h3>
         </div>
         <span className="shrink-0 text-xs text-ink-muted/70 tabular-nums">
-          {formatRelativeDate(new Date(activity.created_at))}
+          {formatRelativeDate(parseServerDate(activity.created_at), lang)}
         </span>
       </div>
 

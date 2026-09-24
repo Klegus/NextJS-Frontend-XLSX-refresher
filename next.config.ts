@@ -3,13 +3,12 @@ import JavaScriptObfuscator from 'webpack-obfuscator';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Self-contained server bundle: the Docker image ships only what runs in production
+  output: 'standalone',
   eslint: {
     // Warning: This allows production builds to successfully complete even if
     // your project has ESLint errors.
     ignoreDuringBuilds: true,
-  },
-  images: {
-    domains: ['encrypted-tbn0.gstatic.com'],
   },
   typescript: {
     // !! WARN !!
@@ -23,18 +22,6 @@ const nextConfig: NextConfig = {
   
   // Wyłączamy assetPrefix, który może powodować problemy z przekierowaniami
   
-  // Bardziej stabilne ustawienia dla środowisk
-  env: {
-    NEXTAUTH_URL: process.env.NODE_ENV === 'production' ? 'https://dev.planinf.pl' : 'http://localhost:5000',
-    SITE_URL: process.env.NODE_ENV === 'production' ? 'https://dev.planinf.pl' : 'http://localhost:5000'
-  },
-  
-  // Przestajemy walczyć z nagłówkami - zostawić to dla Nginx
-  
-  // Uproszczona konfiguracja runtime
-  publicRuntimeConfig: {
-    host: process.env.NODE_ENV === 'production' ? 'https://dev.planinf.pl' : 'http://localhost:5000',
-  },
   webpack: (config, { dev, isServer }) => {
     // Aplikujemy obfuscator tylko dla produkcji i kodu klienta
     if (!dev && !isServer) {

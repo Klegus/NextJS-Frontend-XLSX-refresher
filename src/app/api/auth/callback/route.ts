@@ -1,16 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAuthToken, SERVER_REDIRECT_URI, sanitizeRedirectUrl } from '@/lib/msauth-server';
+import {
+  createAuthToken, SERVER_REDIRECT_URI,
+  OAUTH_STATE_COOKIE, OAUTH_VERIFIER_COOKIE, oauthEndpoint, publicUrl,
+} from '@/lib/msauth-server';
+
+function loginError(message: string, request: NextRequest) {
+  const response = NextResponse.redirect(publicUrl(`/login?error=${encodeURIComponent(message)}`));
+  clearOAuthCookies(response);
+  return response;
+}
+
+function clearOAuthCookies(response: NextResponse) {
+  for (const name of [OAUTH_STATE_COOKIE, OAUTH_VERIFIER_COOKIE]) {
+    response.cookies.set({ name, value: '', path: '/api/auth', maxAge: 0, httpOnly: true });
+  }
+}
 
 // Tworzy token i przekierowuje na stronę główną
 async function createAndReturnToken(userData: { id: string, name: string, email: string }, request: NextRequest) {
   const authToken = await createAuthToken(userData);
 
-  // Używamy request.nextUrl.origin — to automatycznie daje poprawny host
-  // (localhost w dev, domena produkcyjna za proxy)
-  const homepageUrl = process.env.NODE_ENV === 'production'
-    ? (process.env.PRODUCTION_BASE_URL || request.nextUrl.origin) + '/'
-    : '/';
-  
+  const homepageUrl = publicUrl('/');
+
   // Tworzymy odpowiedź z NextResponse, który ma metodę cookies
   const response = NextResponse.redirect(homepageUrl, {
     // Używamy kodu 302 (Found)
@@ -29,56 +40,46 @@ async function createAndReturnToken(userData: { id: string, name: string, email:
     secure: process.env.NODE_ENV === 'production',
     maxAge: 60 * 60 * 24, // 1 dzień
     path: '/',
+    sameSite: 'lax',
   });
-  
+  clearOAuthCookies(response);
+
   return response;
 }
 
 export async function GET(request: NextRequest) {
-  // Szczegółowe logowanie
-  console.log('====== AUTH CALLBACK ======');
-  console.log('Request URL:', request.url);
-  console.log('Request headers:', JSON.stringify(Object.fromEntries(request.headers.entries())));
-  console.log('Request nextUrl:', request.nextUrl.toString());
-  console.log('Host header:', request.headers.get('host'));
-  console.log('Referer:', request.headers.get('referer'));
-  console.log('Origin:', request.headers.get('origin'));
-  console.log('===========================');
-
   const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get('code');
   const error = searchParams.get('error');
   const errorDescription = searchParams.get('error_description');
+
+  // The state must match the one issued by /api/auth/login (login CSRF protection)
+  const expectedState = request.cookies.get(OAUTH_STATE_COOKIE)?.value;
+  const codeVerifier = request.cookies.get(OAUTH_VERIFIER_COOKIE)?.value;
+  if (!error && (!expectedState || !codeVerifier || searchParams.get('state') !== expectedState)) {
+    return loginError('Sesja logowania wygasła lub jest nieprawidłowa – spróbuj ponownie.', request);
+  }
   
   // Sprawdź, czy wystąpił błąd
   if (error) {
-    return NextResponse.redirect(
-      new URL(`/login?error=${encodeURIComponent(errorDescription || error)}`, request.url)
-    );
+    return loginError(errorDescription || error, request);
   }
   
   // Sprawdź, czy otrzymaliśmy kod autoryzacyjny
   if (!code) {
-    return NextResponse.redirect(
-      new URL('/login?error=No+authorization+code+received', request.url)
-    );
+    return loginError('No authorization code received', request);
   }
   
   try {
-    // Sprawdź, czy tenant ID jest skonfigurowany
-    const tenantId = process.env.AZURE_AD_TENANT_ID;
-    if (!tenantId) {
-      throw new Error('Azure AD Tenant ID not configured');
-    }
-    
     // Wymień kod autoryzacyjny na token dostępu
-    const tokenEndpoint = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
+    const tokenEndpoint = oauthEndpoint('token');
     const params = new URLSearchParams({
       client_id: process.env.AZURE_AD_CLIENT_ID || '',
       client_secret: process.env.AZURE_AD_CLIENT_SECRET || '',
       code,
       redirect_uri: SERVER_REDIRECT_URI,
       grant_type: 'authorization_code',
+      code_verifier: codeVerifier || '',
     });
     
     const tokenResponse = await fetch(tokenEndpoint, {
@@ -105,7 +106,6 @@ export async function GET(request: NextRequest) {
       // Pobierz więcej szczegółów o błędzie
       const errorText = await userInfoResponse.text();
       console.error('Graph API error details:', errorText);
-      console.error('Token details:', tokenData);
       
       // Spróbujmy użyć informacji z tokenu zamiast pobierać z Graph API
       if (tokenData.id_token) {
@@ -140,8 +140,6 @@ export async function GET(request: NextRequest) {
     }, request);
   } catch (error: any) {
     console.error('Auth callback error:', error);
-    return NextResponse.redirect(
-      new URL(`/login?error=${encodeURIComponent(error.message)}`, request.url)
-    );
+    return loginError(error.message, request);
   }
 }

@@ -1,4 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { protectLecturers } from '@/lib/lecturers';
+import { API_URL } from '@/lib/config';
+
+// Shorten lecturers' names in the feed when the access mode requires it
+function protectPlanData(data: any) {
+  if (!data) return data;
+  if (typeof data.plan_html === 'string') data.plan_html = protectLecturers(data.plan_html);
+  if (data.group_htmls) {
+    data.group_htmls = Object.fromEntries(
+      Object.entries(data.group_htmls as Record<string, string>).map(([g, html]) => [g, protectLecturers(html)])
+    );
+  }
+  return data;
+}
 
 interface CalendarEvent {
   title: string;
@@ -42,8 +56,7 @@ export async function GET(
 
     // Pobierz plan z backendu
     // Use server-side env var for API routes (not embedded in build)
-    // Fallback chain: API_BASE_URL -> NEXT_PUBLIC_API_BASE_URL -> Docker network IP
-    const backendUrl = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://172.30.0.20';
+    const backendUrl = API_URL;
     let planData;
 
     if (isMixed) {
@@ -62,6 +75,7 @@ export async function GET(
       }
 
       planData = await response.json();
+      planData = protectPlanData(planData);
       console.log('Mixed plan data received:', Object.keys(planData));
     } else {
       // Użyj API dla zwykłych planów
@@ -76,6 +90,7 @@ export async function GET(
       }
 
       planData = await response.json();
+      planData = protectPlanData(planData);
       console.log('Single plan data received:', Object.keys(planData));
     }
 

@@ -1,43 +1,4 @@
-/**
- * Funkcja sprawdzająca czy cenzura powinna być włączona
- * @returns {boolean} - Czy cenzura jest włączona
- */
-export function isCensorshipEnabled() {
-  // Sprawdź, czy cenzura jest wyłączona w aplikacji
-  // Domyślnie cenzura jest WŁĄCZONA dla bezpieczeństwa danych osobowych
-  // Można ją wyłączyć ustawiając NEXT_PUBLIC_ENABLE_CENSORSHIP na "false"
-
-  // W Next.js zmienne NEXT_PUBLIC_ są wbudowywane w build jako literały
-  // Używamy try-catch dla bezpieczeństwa
-  let censoringEnabled = true; // DOMYŚLNIE WŁĄCZONA
-  try {
-    // Cenzura jest wyłączona tylko gdy explicite ustawiona na "false"
-    if (process.env.NEXT_PUBLIC_ENABLE_CENSORSHIP === 'false') {
-      censoringEnabled = false;
-    }
-  } catch (e) {
-    // Jeśli process jest undefined, pozostaw cenzurę włączoną
-    censoringEnabled = true;
-  }
-
-  if (!censoringEnabled) {
-    return false;
-  }
-  
-  // Sprawdź czy jesteśmy w przeglądarce
-  if (typeof window === 'undefined') {
-    return true; // Po stronie serwera zawsze włączona (jeśli cenzura jest aktywna)
-  }
-  
-  try {
-    // Sprawdź czy użytkownik jest zweryfikowany
-    const isVerified = localStorage.getItem('verified_email') === 'true';
-    return !isVerified; // Cenzura wyłączona dla zweryfikowanych
-  } catch (error) {
-    console.error('Error checking censorship status:', error);
-    return true; // W przypadku błędu domyślnie włączamy cenzurę
-  }
-}
+// Whether to shorten names is decided on the server by the access mode (src/lib/access.ts)
 
 /**
  * Funkcja cenzurująca imiona i nazwiska wykładowców
@@ -45,13 +6,6 @@ export function isCensorshipEnabled() {
  * @returns {string} - Ocenzurowane imię i nazwisko (np. "mgr Z. R.")
  */
 export function censorLecturerName(fullName) {
-  // Sprawdź, czy cenzura jest włączona
-  const shouldCensor = isCensorshipEnabled();
-  
-  if (!shouldCensor) {
-    return fullName;
-  }
-  
   // Podziel pełne imię na części
   const parts = fullName.split(' ');
   
@@ -87,10 +41,7 @@ export function censorLecturerName(fullName) {
  * @returns {string} - Treść HTML z ocenzurowanymi imionami i nazwiskami wykładowców
  */
 export function censorLecturerNamesInHtml(htmlContent) {
-  // Sprawdź, czy cenzura jest włączona
-  const shouldCensor = isCensorshipEnabled();
-  
-  if (!shouldCensor || !htmlContent) {
+  if (!htmlContent) {
     return htmlContent;
   }
   

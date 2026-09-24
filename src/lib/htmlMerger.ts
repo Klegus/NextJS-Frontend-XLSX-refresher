@@ -8,12 +8,27 @@ interface MergedCell {
   groups: string[];
 }
 
-export function mergeHTMLTables(htmlPerGroup: Record<string, string>): string {
+// Teksty generowane w kodzie – przekazywane z warstwy i18n (domyślnie po polsku)
+export interface MergeLabels {
+  noData: string;
+  noTables: string;
+  mergedFrom: string;
+  conflictHint: string;
+}
+
+const DEFAULT_LABELS: MergeLabels = {
+  noData: 'Brak danych do wyświetlenia',
+  noTables: 'Nie znaleziono tabel do połączenia',
+  mergedFrom: 'Plan scalony z grup:',
+  conflictHint: 'Komórki z żółtym tłem zawierają zajęcia z różnych grup występujące w tym samym czasie',
+};
+
+export function mergeHTMLTables(htmlPerGroup: Record<string, string>, labels: MergeLabels = DEFAULT_LABELS): string {
   console.log('=== Starting HTML merge ===');
   console.log('Groups to merge:', Object.keys(htmlPerGroup));
 
   if (Object.keys(htmlPerGroup).length === 0) {
-    return '<p>Brak danych do wyświetlenia</p>';
+    return `<p>${labels.noData}</p>`;
   }
 
   // If only one group, return as-is
@@ -37,7 +52,7 @@ export function mergeHTMLTables(htmlPerGroup: Record<string, string>): string {
   }
 
   if (tables.length === 0) {
-    return '<p>Nie znaleziono tabel do połączenia</p>';
+    return `<p>${labels.noTables}</p>`;
   }
 
   // Helper function to normalize time slot for comparison
@@ -233,9 +248,9 @@ export function mergeHTMLTables(htmlPerGroup: Record<string, string>): string {
   const infoDiv = document.createElement('div');
   infoDiv.className = 'mt-4 p-3 bg-blue-50 rounded-md text-sm text-blue-700';
   infoDiv.innerHTML = `
-    <strong>Plan scalony z grup:</strong> ${Object.keys(htmlPerGroup).join(', ')}
+    <strong>${labels.mergedFrom}</strong> ${Object.keys(htmlPerGroup).join(', ')}
     <br>
-    <span class="text-xs">Komórki z żółtym tłem zawierają zajęcia z różnych grup występujące w tym samym czasie</span>
+    <span class="text-xs">${labels.conflictHint}</span>
   `;
 
   // Combine table and info
