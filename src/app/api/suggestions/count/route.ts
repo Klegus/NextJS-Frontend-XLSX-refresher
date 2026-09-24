@@ -9,7 +9,8 @@ export async function GET(request: NextRequest) {
     const response = await fetch(`${API_URL}/api/suggestions/count`, {
       headers: {
         'User-Agent': request.headers.get('User-Agent') || '',
-        'X-Forwarded-For': request.headers.get('X-Forwarded-For') || '',
+        // Cloudflare sets CF-Connecting-IP itself; X-Forwarded-For can be forged by the client
+        'X-Client-IP': request.headers.get('cf-connecting-ip') || request.headers.get('x-real-ip') || '',
       },
     });
     

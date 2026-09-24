@@ -30,7 +30,8 @@ export async function POST(request: NextRequest) {
       headers: {
         'Content-Type': 'application/json',
         'User-Agent': request.headers.get('User-Agent') || '',
-        'X-Forwarded-For': request.headers.get('X-Forwarded-For') || '',
+        // Cloudflare sets CF-Connecting-IP itself; X-Forwarded-For can be forged by the client
+        'X-Client-IP': request.headers.get('cf-connecting-ip') || request.headers.get('x-real-ip') || '',
       },
       body: JSON.stringify({ content: data.content }),
     });
