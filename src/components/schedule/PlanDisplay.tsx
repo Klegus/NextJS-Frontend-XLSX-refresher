@@ -123,6 +123,9 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
             // "zj.2,3,5": meeting numbers, dated by the programme's meeting calendar.
             // Matched by week - on-line classes may fall on a day the calendar omits (Thursday)
             const meetings = meetingsInCell(text);
+            // a sheet of a single meeting ("zj.5") lists no numbers in its cells
+            const own = source ? plan.meetingBySource?.[source] : plan.meeting;
+            if (!meetings.length && own) meetings.push(own);
             if (meetings.length && zjazdy) {
                 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                 const from = iso(weekRange.start), to = iso(weekRange.end);

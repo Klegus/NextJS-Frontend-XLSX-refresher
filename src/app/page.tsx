@@ -170,22 +170,31 @@ export default function HomePage() {
         setPlanLoading(true);
         try {
           const newPlan = await getPlan(selection.plan, selection.group);
-          if (newPlan.companion && Object.keys(newPlan.companion.groups).length) {
-            // Weekend studies: the student's on-site group plus the on-line lectures
-            const extra = Object.entries(newPlan.companion.groups);
-            const label = (g: string) => extra.length > 1 ? `${newPlan.companion!.label}: ${g}` : newPlan.companion!.label;
+          const parts = (newPlan.parts || (newPlan.companion ? [newPlan.companion] : []))
+            .filter(p => Object.keys(p.groups).length);
+          if (parts.length) {
+            // Plan published in parts: the student's sheet plus the on-line lectures
+            // and the sheets of the other meetings, shown as one timetable
+            const own = newPlan.meeting ? `zjazd ${newPlan.meeting}` : selection.group;
+            const sources = parts.flatMap(p => Object.entries(p.groups).map(([g, html]) => ({
+              label: Object.keys(p.groups).length > 1 ? `${p.label}: ${g}` : p.label, html, part: p,
+            })));
             setPlan({
               ...newPlan,
               html: '',
               mixed: true,
               htmlPerGroup: {
-                [selection.group]: newPlan.html,
-                ...Object.fromEntries(extra.map(([g, html]) => [label(g), html])),
+                [own]: newPlan.html,
+                ...Object.fromEntries(sources.map(s => [s.label, s.html])),
               },
-              // on-site and on-line sheets number their meetings separately
+              // every sheet numbers its meetings on its own
               zjazdyBySource: {
-                [selection.group]: newPlan.zjazdy,
-                ...Object.fromEntries(extra.map(([g]) => [label(g), newPlan.companion!.zjazdy])),
+                [own]: newPlan.zjazdy,
+                ...Object.fromEntries(sources.map(s => [s.label, s.part.zjazdy])),
+              },
+              meetingBySource: {
+                [own]: newPlan.meeting,
+                ...Object.fromEntries(sources.map(s => [s.label, s.part.meeting || undefined])),
               },
             });
           } else {

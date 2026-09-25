@@ -19,9 +19,19 @@ export interface Plan {
   category: string | null;
   groups?: Record<string, string[]>;
   mixed?: boolean; // Flag indicating this is a mixed plan
-  companion?: { label: string; groups: Record<string, string>; zjazdy?: Record<string, string[]> }; // on-line lectures of weekend studies
+  companion?: PlanPart; // on-line lectures of weekend studies (older backends)
+  parts?: PlanPart[]; // other sheets of a plan published in parts (on-line lectures, one sheet per meeting)
+  meeting?: string; // the meeting of this sheet when the plan has one sheet per meeting
+  meetingBySource?: Record<string, string | undefined>; // merged plans: meeting of each sheet
   zjazdy?: Record<string, string[]>; // meeting number -> ISO dates (plans listing "zj.2,3")
   zjazdyBySource?: Record<string, Record<string, string[]> | undefined>; // merged plans: calendar of each sheet
+}
+
+export interface PlanPart {
+  label: string;
+  groups: Record<string, string>;
+  zjazdy?: Record<string, string[]>;
+  meeting?: string | null; // cells without "zj.N" belong to this meeting
 }
 
 export interface PlanData {

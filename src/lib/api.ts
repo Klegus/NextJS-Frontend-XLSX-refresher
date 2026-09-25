@@ -61,6 +61,8 @@ export const getPlan = async (collection: string, group: string): Promise<Plan> 
     mixed: data.mixed,
     notes: data.notes,
     companion: data.companion,
+    parts: data.parts,
+    meeting: data.meeting,
     zjazdy: data.zjazdy,
   };
 };

@@ -49,13 +49,18 @@ export async function GET(
 
     const data = await response.json();
 
-    // Weekend studies: on-line lectures published as a separate sheet come along
-    const companion = data.companion?.groups ? {
-      label: String(data.companion.label || ''),
-      groups: Object.fromEntries(Object.entries(data.companion.groups as Record<string, string>)
+    // Plans published in parts (weekend on-line lectures, one sheet per meeting):
+    // the other sheets come along
+    type SheetPart = { label?: unknown; groups?: Record<string, string>; zjazdy?: Record<string, string[]>; meeting?: unknown };
+    const part = (p?: SheetPart) => p?.groups ? {
+      label: String(p.label || ''),
+      groups: Object.fromEntries(Object.entries(p.groups)
         .map(([g, html]) => [g, protectLecturers(html)])),
-      zjazdy: data.companion.zjazdy || undefined,
+      zjazdy: p.zjazdy || undefined,
+      meeting: p.meeting ? String(p.meeting) : undefined,
     } : undefined;
+    const companion = part(data.companion);
+    const parts = Array.isArray(data.parts) ? (data.parts as SheetPart[]).map(p => part(p)).filter(Boolean) : undefined;
 
     return NextResponse.json({
       plan_html: protectLecturers(data.plan_html),
@@ -63,6 +68,8 @@ export async function GET(
       timestamp: data.timestamp,
       category: data.category,
       ...(companion ? { companion } : {}),
+      ...(parts?.length ? { parts } : {}),
+      ...(data.meeting ? { meeting: String(data.meeting) } : {}),
       ...(data.zjazdy ? { zjazdy: data.zjazdy } : {}),
     });
 

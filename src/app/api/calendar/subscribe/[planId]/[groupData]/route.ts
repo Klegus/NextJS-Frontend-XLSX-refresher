@@ -4,6 +4,8 @@ import { API_URL } from '@/lib/config';
 
 import { denyWithoutAccess } from '@/lib/guard';
 
+type SheetPart = { label?: string; groups?: Record<string, string>; zjazdy?: Record<string, string[]>; meeting?: string | null };
+
 // Shorten lecturers' names in the feed when the access mode requires it
 function protectPlanData(data: any) {
   if (!data) return data;
@@ -99,17 +101,22 @@ export async function GET(
 
       planData = await response.json();
       planData = protectPlanData(planData);
-      if (planData?.companion?.groups && planData.plan_html) {
-        // Weekend studies: on-site group + on-line lectures, parsed like a mixed plan
-        planData.zjazdyByGroup = {
-          [groups[0]]: planData.zjazdy,
-          ...Object.fromEntries(Object.keys(planData.companion.groups).map((g: string) => [g, planData.companion.zjazdy])),
-        };
-        planData.group_htmls = {
-          [groups[0]]: planData.plan_html,
-          ...Object.fromEntries(Object.entries(planData.companion.groups as Record<string, string>)
-            .map(([g, html]) => [g, protectLecturers(html)])),
-        };
+      const parts = ((Array.isArray(planData?.parts) ? planData.parts : [planData?.companion]) as (SheetPart | undefined)[])
+        .filter((p): p is SheetPart & { groups: Record<string, string> } => !!p?.groups && Object.keys(p.groups).length > 0);
+      if (parts.length && planData.plan_html) {
+        // Plan published in parts (on-line lectures, one sheet per meeting):
+        // every sheet parsed like a group of a mixed plan, with its own meeting numbering
+        const own = planData.meeting ? `zjazd ${planData.meeting}` : groups[0];
+        const htmls: Record<string, string> = { [own]: planData.plan_html };
+        const zjazdyByGroup: Record<string, Record<string, string[]> | undefined> = { [own]: planData.zjazdy };
+        const meetingByGroup: Record<string, string | undefined> = { [own]: planData.meeting };
+        parts.forEach(p => Object.entries(p.groups).forEach(([g, html]) => {
+          const key = `${p.label}: ${g}`;
+          htmls[key] = protectLecturers(html);
+          zjazdyByGroup[key] = p.zjazdy;
+          meetingByGroup[key] = p.meeting || undefined;
+        }));
+        Object.assign(planData, { group_htmls: htmls, zjazdyByGroup, meetingByGroup });
         isMixed = true;
       }
     }
@@ -314,7 +321,8 @@ function parseHtmlForEvents(planData: any, options: any): CalendarEvent[] {
       Object.entries(planData.group_htmls).forEach(([groupName, groupHtml]) => {
         console.log(`Parsing HTML for group: ${groupName}`);
         // each sheet (on-site / on-line) has its own meeting numbering
-        const groupEvents = parseSingleHtmlTable(groupHtml as string, planData.zjazdyByGroup?.[groupName] || planData.zjazdy);
+        const groupEvents = parseSingleHtmlTable(groupHtml as string, planData.zjazdyByGroup?.[groupName] || planData.zjazdy,
+          planData.meetingByGroup?.[groupName]);
 
         // Group events by time slot for merging
         groupEvents.forEach(event => {
@@ -366,7 +374,8 @@ function parseHtmlForEvents(planData: any, options: any): CalendarEvent[] {
 }
 
 // zjazdy: meeting number -> ISO dates, for plans that list "zj.2,3" instead of dates
-function parseSingleHtmlTable(htmlContent: string, zjazdy?: Record<string, string[]>): CalendarEvent[] {
+// meeting: the meeting of a sheet published per meeting ("zj.5"), for cells without numbers
+function parseSingleHtmlTable(htmlContent: string, zjazdy?: Record<string, string[]>, meeting?: string): CalendarEvent[] {
   const events: CalendarEvent[] = [];
 
   try {
@@ -451,8 +460,10 @@ function parseSingleHtmlTable(htmlContent: string, zjazdy?: Record<string, strin
           } else if (zjazdy) {
             // "zj.2,3,5": the meeting calendar gives the week, the column the weekday
             // (on-line classes may be on a day the calendar omits, e.g. Thursday)
-            const meetings = cellContent.match(/zj\.?\s*((?:\d{1,2}\s*[,;]?\s*)+)/i);
-            (meetings?.[1].match(/\d{1,2}/g) || []).forEach(n => {
+            const meetings = [...cellContent.matchAll(/zj\.?\s*((?:\d{1,2}\s*[,;]?\s*)+)/gi)]
+              .flatMap(m => m[1].match(/\d{1,2}/g) || []);
+            if (!meetings.length && meeting) meetings.push(meeting);
+            meetings.forEach(n => {
               const first = (zjazdy[String(Number(n))] || [])[0];
               if (!first || expectedDow < 0) return;
               const d = new Date(`${first}T00:00:00Z`);
