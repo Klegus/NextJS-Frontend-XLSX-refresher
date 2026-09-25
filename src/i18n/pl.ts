@@ -224,6 +224,7 @@ export const pl = {
     domains: 'Tylko adresy @wspa.pl lub @student.wspa.pl',
     azureMissing: 'Azure AD nie skonfigurowane. Skontaktuj się z administratorem.',
     error: 'Wystąpił błąd podczas logowania.',
+    sessionExpired: 'Sesja logowania wygasła lub jest nieprawidłowa – spróbuj ponownie.',
     yearLabel: 'WSPA Lublin · {year}',
   },
   time: {

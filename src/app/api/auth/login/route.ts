@@ -14,7 +14,8 @@ export async function GET(request: NextRequest) {
     if (!clientId) throw new Error('Azure AD Client ID not configured');
     authorizeUrl = oauthEndpoint('authorize');
   } catch (error: any) {
-    return NextResponse.redirect(publicUrl(`/login?error=${encodeURIComponent(error.message)}`));
+    console.error('Sign-in could not start:', error?.message);
+    return NextResponse.redirect(publicUrl('/login?error=failed'));
   }
 
   const state = randomUrlSafe();

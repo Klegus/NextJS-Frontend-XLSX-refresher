@@ -223,6 +223,7 @@ export const uk: Dict = {
     domains: 'Лише адреси @wspa.pl або @student.wspa.pl',
     azureMissing: 'Azure AD не налаштовано. Зверніться до адміністратора.',
     error: 'Під час входу сталася помилка.',
+    sessionExpired: 'Сеанс входу закінчився або недійсний – спробуйте ще раз.',
     yearLabel: 'WSPA Lublin · {year}',
   },
   time: {

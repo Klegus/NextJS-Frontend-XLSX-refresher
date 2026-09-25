@@ -3,13 +3,19 @@ import type { NextRequest } from 'next/server';
 
 import { API_URL } from '@/lib/config';
 
+import { denyWithoutAccess } from '@/lib/guard';
+import { getClientIp } from '@/lib/clientIp';
+
 // API endpoint do wysyłania sugestii
 export async function POST(request: NextRequest) {
+  const denied = await denyWithoutAccess(request);
+  if (denied) return denied;
+
   try {
-    const data = await request.json();
-    
-    // Sprawdź, czy sugestia nie jest pusta
-    if (!data.content || !data.content.trim()) {
+    const data = await request.json().catch(() => null);
+
+    // Sprawdź, czy sugestia jest niepustym tekstem (obiekt JSON nie przechodzi dalej)
+    if (!data || typeof data.content !== 'string' || !data.content.trim()) {
       return NextResponse.json({ 
         success: false, 
         message: 'Treść sugestii nie może być pusta' 
@@ -30,8 +36,8 @@ export async function POST(request: NextRequest) {
       headers: {
         'Content-Type': 'application/json',
         'User-Agent': request.headers.get('User-Agent') || '',
-        // Cloudflare sets CF-Connecting-IP itself; X-Forwarded-For can be forged by the client
-        'X-Client-IP': request.headers.get('cf-connecting-ip') || request.headers.get('x-real-ip') || '',
+        // Address from the trusted proxy header (see lib/clientIp.ts); X-Forwarded-For can be forged
+        'X-Client-IP': getClientIp(request),
       },
       body: JSON.stringify({ content: data.content }),
     });

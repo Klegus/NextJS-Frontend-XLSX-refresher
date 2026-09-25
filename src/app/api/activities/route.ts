@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { API_URL } from '@/lib/config';
+import { denyWithoutAccess } from '@/lib/guard';
+
 export async function GET(request: NextRequest) {
+  const denied = await denyWithoutAccess(request);
+  if (denied) return denied;
+
   try {
     const { searchParams } = new URL(request.url);
     const limit = searchParams.get('limit');

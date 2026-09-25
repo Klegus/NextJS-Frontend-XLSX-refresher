@@ -4,10 +4,15 @@ import type { NextRequest } from 'next/server';
 
 import { API_URL } from '@/lib/config';
 
+import { denyWithoutAccess } from '@/lib/guard';
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { collection: string } }
 ) {
+  const denied = await denyWithoutAccess(request);
+  if (denied) return denied;
+
   try {
     // Await params before accessing its properties
     const { collection } = await params;
@@ -49,6 +54,11 @@ export async function POST(
       );
     }
 
+    if (response.status >= 400 && response.status < 500) {
+      // Unknown plan/group or invalid request - pass the status on, not a 500
+      return NextResponse.json({ error: response.status === 404 ? 'not_found' : 'bad_request' },
+        { status: response.status });
+    }
     if (!response.ok) {
       throw new Error(`Backend responded with status: ${response.status}`);
     }
@@ -66,8 +76,7 @@ export async function POST(
     console.error('Error in mixed plan route:', error);
     return NextResponse.json(
       {
-        error: 'Failed to fetch mixed plan',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        error: 'Failed to fetch mixed plan'
       },
       { status: 500 }
     );

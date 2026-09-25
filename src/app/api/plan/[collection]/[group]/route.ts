@@ -4,10 +4,15 @@ import type { NextRequest } from 'next/server';
 
 import { API_URL } from '@/lib/config';
 
+import { denyWithoutAccess } from '@/lib/guard';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { collection: string; group: string } }
 ) {
+  const denied = await denyWithoutAccess(request);
+  if (denied) return denied;
+
   try {
     // Await params before accessing its properties
     const { collection, group } = await params;
@@ -33,6 +38,11 @@ export async function GET(
       );
     }
 
+    if (response.status >= 400 && response.status < 500) {
+      // Unknown plan/group or invalid request - pass the status on, not a 500
+      return NextResponse.json({ error: response.status === 404 ? 'not_found' : 'bad_request' },
+        { status: response.status });
+    }
     if (!response.ok) {
       throw new Error(`Backend responded with status: ${response.status}`);
     }
@@ -50,8 +60,7 @@ export async function GET(
     console.error('Error in plan route:', error);
     return NextResponse.json(
       { 
-        error: 'Failed to fetch plan', 
-        details: error instanceof Error ? error.message : 'Unknown error'
+        error: 'Failed to fetch plan'
       },
       { status: 500 }
     );

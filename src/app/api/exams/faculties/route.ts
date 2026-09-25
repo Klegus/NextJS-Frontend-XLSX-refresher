@@ -2,7 +2,12 @@ import { NextResponse } from 'next/server';
 
 import { API_URL } from '@/lib/config';
 
-export async function GET() {
+import { denyWithoutAccess } from '@/lib/guard';
+
+export async function GET(request: Request) {
+  const denied = await denyWithoutAccess(request);
+  if (denied) return denied;
+
   try {
     const response = await fetch(`${API_URL}/api/exams/faculties`, { cache: 'no-store' });
     if (!response.ok) throw new Error(`Backend responded with status: ${response.status}`);

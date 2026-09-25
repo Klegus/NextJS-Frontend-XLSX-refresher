@@ -5,6 +5,7 @@ import { convertTimeToMinutes } from '@/lib/utils';
 import { useLanguage, localizeWeekdayHeaders } from '@/i18n';
 import { timeSinceUpdate, formatShortDate, formatFullDate } from '@/i18n/format';
 import { SuggestionModal } from '@/components/ui/SuggestionModal';
+import { sanitizeHtml } from '@/lib/sanitize';
 
 interface PlanDisplayProps {
   plan: Plan;
@@ -379,7 +380,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                     ref={containerRef}
                     className="relative min-w-[800px] lg:min-w-0"
                     id="plan-content"
-                    dangerouslySetInnerHTML={{ __html: filteredHtml }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(filteredHtml) }}
                 />
             </div>
 

@@ -3,10 +3,15 @@ import type { NextRequest } from 'next/server';
 
 import { API_URL } from '@/lib/config';
 
+import { denyWithoutAccess } from '@/lib/guard';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { category: string } }
 ) {
+  const denied = await denyWithoutAccess(request);
+  if (denied) return denied;
+
   try {
     // Await params before accessing category
     const { category } = await params; 
@@ -31,7 +36,7 @@ export async function GET(
   } catch (error) {
     console.error('Error in faculties route:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch faculties', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Failed to fetch faculties' },
       { status: 500 }
     );
   }

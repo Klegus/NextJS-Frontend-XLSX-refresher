@@ -223,6 +223,7 @@ export const en: Dict = {
     domains: 'Only @wspa.pl or @student.wspa.pl addresses',
     azureMissing: 'Azure AD is not configured. Please contact the administrator.',
     error: 'An error occurred while signing in.',
+    sessionExpired: 'The sign-in session expired or is invalid – please try again.',
     yearLabel: 'WSPA Lublin · {year}',
   },
   time: {

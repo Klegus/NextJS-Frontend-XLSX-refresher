@@ -4,8 +4,10 @@ import {
   OAUTH_STATE_COOKIE, OAUTH_VERIFIER_COOKIE, oauthEndpoint, publicUrl,
 } from '@/lib/msauth-server';
 
-function loginError(message: string, request: NextRequest) {
-  const response = NextResponse.redirect(publicUrl(`/login?error=${encodeURIComponent(message)}`));
+// Only a fixed code goes to the login page; details stay in the server log
+function loginError(code: 'expired' | 'failed', request: NextRequest, detail?: string) {
+  if (detail) console.error('Sign-in failed:', detail);
+  const response = NextResponse.redirect(publicUrl(`/login?error=${code}`));
   clearOAuthCookies(response);
   return response;
 }
@@ -57,17 +59,17 @@ export async function GET(request: NextRequest) {
   const expectedState = request.cookies.get(OAUTH_STATE_COOKIE)?.value;
   const codeVerifier = request.cookies.get(OAUTH_VERIFIER_COOKIE)?.value;
   if (!error && (!expectedState || !codeVerifier || searchParams.get('state') !== expectedState)) {
-    return loginError('Sesja logowania wygasła lub jest nieprawidłowa – spróbuj ponownie.', request);
+    return loginError('expired', request);
   }
   
   // Sprawdź, czy wystąpił błąd
   if (error) {
-    return loginError(errorDescription || error, request);
+    return loginError('failed', request, errorDescription || error);
   }
   
   // Sprawdź, czy otrzymaliśmy kod autoryzacyjny
   if (!code) {
-    return loginError('No authorization code received', request);
+    return loginError('failed', request, 'No authorization code received');
   }
   
   try {
@@ -107,27 +109,9 @@ export async function GET(request: NextRequest) {
       const errorText = await userInfoResponse.text();
       console.error('Graph API error details:', errorText);
       
-      // Spróbujmy użyć informacji z tokenu zamiast pobierać z Graph API
-      if (tokenData.id_token) {
-        try {
-          // Dekoduj id_token (to jest token JWT)
-          const tokenParts = tokenData.id_token.split('.');
-          if (tokenParts.length === 3) {
-            const payload = JSON.parse(Buffer.from(tokenParts[1], 'base64').toString());
-            
-            // Użyj danych z tokenu ID
-            return await createAndReturnToken({
-              id: payload.oid || payload.sub,
-              name: payload.name,
-              email: payload.preferred_username || payload.email,
-            }, request);
-          }
-        } catch (tokenError) {
-          console.error('Error decoding id_token:', tokenError);
-        }
-      }
-      
-      throw new Error(`Failed to fetch user info: ${errorText}`);
+      // No fallback to decoding the id_token: without verifying its signature,
+      // issuer and audience its claims cannot be trusted
+      throw new Error('Failed to fetch user info from Microsoft Graph');
     }
     
     const userData = await userInfoResponse.json();
@@ -140,6 +124,6 @@ export async function GET(request: NextRequest) {
     }, request);
   } catch (error: any) {
     console.error('Auth callback error:', error);
-    return loginError(error.message, request);
+    return loginError('failed', request, error?.message);
   }
 }

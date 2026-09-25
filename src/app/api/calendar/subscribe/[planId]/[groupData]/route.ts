@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { protectLecturers } from '@/lib/lecturers';
 import { API_URL } from '@/lib/config';
 
+import { denyWithoutAccess } from '@/lib/guard';
+
 // Shorten lecturers' names in the feed when the access mode requires it
 function protectPlanData(data: any) {
   if (!data) return data;
@@ -27,13 +29,15 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ planId: string; groupData: string }> }
 ) {
+  const denied = await denyWithoutAccess(request, { allowCalendarToken: true });
+  if (denied) return denied;
+
   try {
     // Await params in Next.js 15
     const resolvedParams = await params;
 
-    // Add logging for debugging
-    console.log('Calendar subscription API called with params:', resolvedParams);
-    console.log('Request URL:', request.url);
+    // The URL is not logged: in SSO mode it carries the calendar token (?t=)
+    console.log('Calendar subscription requested for plan:', resolvedParams.planId);
 
     // Decode group data - może być:
     // "grupa-1" (zwykły plan)
@@ -42,6 +46,10 @@ export async function GET(
 
     let groups: string[];
     let isMixed = false;
+
+    if (decodedGroupData.length > 500 || decodedGroupData.split('+').length > 20) {
+      return new Response('Bad request', { status: 400 });
+    }
 
     if (decodedGroupData.includes('+')) {
       // Plan mieszany - split na grupy
@@ -61,7 +69,7 @@ export async function GET(
 
     if (isMixed) {
       // Użyj API dla planów mieszanych
-      const response = await fetch(`${backendUrl}/api/plan/${resolvedParams.planId}/mixed`, {
+      const response = await fetch(`${backendUrl}/api/plan/${encodeURIComponent(resolvedParams.planId)}/mixed`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -79,7 +87,7 @@ export async function GET(
       console.log('Mixed plan data received:', Object.keys(planData));
     } else {
       // Użyj API dla zwykłych planów
-      const response = await fetch(`${backendUrl}/api/plan/${resolvedParams.planId}/${groups[0]}`, {
+      const response = await fetch(`${backendUrl}/api/plan/${encodeURIComponent(resolvedParams.planId)}/${encodeURIComponent(groups[0])}`, {
         headers: {
           'User-Agent': 'Calendar-Subscription/1.0'
         }
@@ -96,7 +104,7 @@ export async function GET(
 
     // Mixed plans have different structure - they have group_htmls instead of plan_html
     if (!planData || (!planData.plan_html && !planData.group_htmls)) {
-      console.error('Invalid plan data structure:', planData);
+      console.error('Invalid plan data structure for plan:', resolvedParams.planId);
       throw new Error('No plan data available');
     }
 
@@ -117,8 +125,6 @@ export async function GET(
       isMixed: isMixed
     });
 
-    // Debug: log first few lines of ICS content
-    console.log('Generated ICS content (first 500 chars):', icsContent.substring(0, 500));
 
     // Smart refresh intervals - more frequent since we show limited timeframe
     const getRefreshInterval = () => {
@@ -164,11 +170,7 @@ export async function GET(
         'ETag': generateETag(planData, groups),
         // Last-Modified header
         'Last-Modified': new Date().toUTCString(),
-        // CORS headers for calendar apps
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Max-Age': '900',  // CORS preflight cache for 15 minutes
+        'X-Content-Type-Options': 'nosniff',
       },
     });
 
@@ -176,7 +178,8 @@ export async function GET(
     console.error('Calendar subscription error:', error);
 
     // Return a basic error calendar
-    const errorIcs = generateErrorICS(error instanceof Error ? error.message : 'Unknown error');
+    // Internal error details stay in the server log
+    const errorIcs = generateErrorICS('Nie udało się pobrać planu zajęć. Spróbuj ponownie później.');
 
     return new NextResponse(errorIcs, {
       status: 500,
@@ -378,7 +381,7 @@ function parseSingleHtmlTable(htmlContent: string): CalendarEvent[] {
     const columnDayOfWeek: number[] = [];
     headerCells.forEach((cell, index) => {
       if (index > 0) {
-        const text = cell.replace(/<[^>]*>/g, '').trim().toLowerCase().split(' ')[0].split('(')[0].trim();
+        const text = decodeHtmlEntities(cell.replace(/<[^>]*>/g, '')).trim().toLowerCase().split(' ')[0].split('(')[0].trim();
         columnDayOfWeek.push(dayNameToNumber[text] ?? -1);
       }
     });
@@ -404,7 +407,8 @@ function parseSingleHtmlTable(htmlContent: string): CalendarEvent[] {
 
       for (let dayIndex = 0; dayIndex < dayCount && (dayIndex + 1) < cellMatches.length; dayIndex++) {
         const cell = cellMatches[dayIndex + 1];
-        const cellText = cell.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '').trim();
+        // Plan HTML escapes cell text (&amp;, &lt;, ...) - the calendar needs plain text
+        const cellText = decodeHtmlEntities(cell.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '')).trim();
         if (!cellText) continue;
 
         const expectedDow = columnDayOfWeek[dayIndex];
@@ -496,7 +500,7 @@ function generateIcsContent(events: CalendarEvent[], meta: {
     'METHOD:PUBLISH',
     `X-WR-CALNAME:${escapeIcsText(meta.calendarName)}`,
     `X-WR-CALDESC:${escapeIcsText(meta.description)}`,
-    `X-WR-RELCALID:${meta.calendarId}`,
+    `X-WR-RELCALID:${escapeIcsText(meta.calendarId)}`,
     'X-WR-TIMEZONE:Europe/Warsaw',
     // Multiple refresh interval properties for maximum client compatibility
     'X-PUBLISHED-TTL:PT15M',  // Apple Calendar - 15 minutes
@@ -614,8 +618,20 @@ function formatDateForIcs(date: Date): string {
   return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}`;
 }
 
-function escapeIcsText(text: string): string {
+function decodeHtmlEntities(text: string): string {
   return text
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#x?0*27;/gi, "'")
+    .replace(/&amp;/g, '&');
+}
+
+// RFC 5545 TEXT escaping; CR is dropped so a value cannot start a new property line
+function escapeIcsText(text: string): string {
+  return String(text)
+    .replace(/\r\n?/g, '\n')
     .replace(/\\/g, '\\\\')
     .replace(/\n/g, '\\n')
     .replace(/,/g, '\\,')

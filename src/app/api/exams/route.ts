@@ -4,8 +4,13 @@ import type { NextRequest } from 'next/server';
 
 import { API_URL } from '@/lib/config';
 
+import { denyWithoutAccess } from '@/lib/guard';
+
 // Proxy to the backend exam timetable; query string is passed through
 export async function GET(request: NextRequest) {
+  const denied = await denyWithoutAccess(request);
+  if (denied) return denied;
+
   try {
     const response = await fetch(`${API_URL}/api/exams?${request.nextUrl.searchParams.toString()}`, {
       cache: 'no-store',

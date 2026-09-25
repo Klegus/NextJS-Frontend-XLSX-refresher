@@ -11,12 +11,24 @@ function getJwtSecret(): Uint8Array {
   return new TextEncoder().encode(secret);
 }
 
-// Weryfikacja tokenu JWT (używana w middleware)
+// Every token names its issuer and purpose (audience); verification pins the
+// algorithm, so a calendar token can never pass as a session and vice versa
+const ISSUER = 'wspa-plan';
+const SESSION_AUDIENCE = 'session';
+const CALENDAR_AUDIENCE = 'calendar';
+
+async function verify(token: string, audience: string) {
+  const { payload } = await jwtVerify(token, getJwtSecret(), {
+    algorithms: ['HS256'], issuer: ISSUER, audience,
+  });
+  return payload;
+}
+
+// Session token check (middleware and API route handlers)
 export async function verifyAuthToken(token: string): Promise<any> {
   try {
-    const { payload } = await jwtVerify(token, getJwtSecret());
-    return payload;
-  } catch (error) {
+    return await verify(token, SESSION_AUDIENCE);
+  } catch {
     return null;
   }
 }
@@ -31,6 +43,8 @@ export async function createAuthToken(userData: any): Promise<string> {
     email: userData.email,
   })
     .setProtectedHeader({ alg: 'HS256' })
+    .setIssuer(ISSUER)
+    .setAudience(SESSION_AUDIENCE)
     .setIssuedAt()
     .setExpirationTime('24h')
     .sign(secret);
@@ -41,6 +55,8 @@ export async function createAuthToken(userData: any): Promise<string> {
 export async function createCalendarToken(userId: string): Promise<string> {
   return new SignJWT({ scope: 'calendar' })
     .setProtectedHeader({ alg: 'HS256' })
+    .setIssuer(ISSUER)
+    .setAudience(CALENDAR_AUDIENCE)
     .setSubject(userId)
     .setIssuedAt()
     .setExpirationTime('365d')
@@ -49,7 +65,7 @@ export async function createCalendarToken(userId: string): Promise<string> {
 
 export async function verifyCalendarToken(token: string): Promise<boolean> {
   try {
-    const { payload } = await jwtVerify(token, getJwtSecret());
+    const payload = await verify(token, CALENDAR_AUDIENCE);
     return payload.scope === 'calendar';
   } catch {
     return false;

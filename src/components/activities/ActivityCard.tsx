@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Activity } from '@/types/schedule';
 import { useLanguage } from '@/i18n';
 import { formatRelativeDate, parseServerDate } from '@/i18n/format';
+import { sanitizeHtml } from '@/lib/sanitize';
 
 interface ActivityCardProps {
   activity: Activity;
@@ -71,7 +72,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
         return (
           <>
             <div className={`mt-3 overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}>
-              <div className="prose max-w-none text-sm" dangerouslySetInnerHTML={{ __html: activity.content }} />
+              <div className="prose max-w-none text-sm" dangerouslySetInnerHTML={{ __html: sanitizeHtml(activity.content) }} />
               {activity.images && activity.images.length > 0 && (
                 <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
                   {activity.images.map((img, index) => (

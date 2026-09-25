@@ -2,7 +2,6 @@ import './globals.css'
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { LoadingBar } from '@/components/ui/LoadingBar'
-import { AuthProvider } from '@/components/auth/AuthProvider'
 import { AccessProvider } from '@/components/auth/AccessContext'
 import { LanguageProvider } from '@/i18n'
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher'
@@ -57,15 +56,13 @@ export default function RootLayout({
       <body className={`${inter.variable} font-sans antialiased relative`}>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData()) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData()).replace(/</g, '\\u003c') }}
         />
         <LoadingBar />
         <AccessProvider mode={getAccessMode()}>
           <LanguageProvider>
             <LanguageSwitcher />
-            <AuthProvider>
-              {children}
-            </AuthProvider>
+            {children}
           </LanguageProvider>
         </AccessProvider>
       </body>

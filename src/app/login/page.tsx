@@ -17,14 +17,16 @@ function LoginPageContent() {
 
   useEffect(() => {
     const errorParam = searchParams?.get('error');
-    if (errorParam) setError(decodeURIComponent(errorParam));
-  }, [searchParams]);
+    // Only fixed error codes come from the callback - never free text from the URL
+    if (errorParam) setError(errorParam === 'expired' ? t('login.sessionExpired') : t('login.error'));
+  }, [searchParams, t]);
 
   const handleLogin = async () => {
     try {
       await loginWithMicrosoft();
     } catch (err: any) {
-      setError(err?.message || t('login.error'));
+      console.error('Login failed:', err);
+      setError(t('login.error'));
     }
   };
 
