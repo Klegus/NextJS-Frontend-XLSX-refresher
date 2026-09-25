@@ -241,17 +241,21 @@ export function mergeHTMLTables(htmlPerGroup: Record<string, string>, labels: Me
           td.innerHTML = `<div data-merge-block data-merge-source="${attr(mergedCell.groups[0])}">${mergedCell.content[0]}</div>`;
         } else {
           // Multiple contents - show all with separators
+          // The source is named only where the student's own groups collide - on-line
+          // lectures and other meetings say what they are in their own text and dates
+          const conflict = isConflict(mergedCell.groups);
           td.innerHTML = mergedCell.content.map((content, idx) => {
             const groupLabel = mergedCell.groups[idx];
-            // For cleaner display, only show group label if there's actual conflict
+            const label = conflict && !independent.includes(groupLabel)
+              ? `<div class="text-xs text-gray-500 font-semibold mb-1">[${attr(groupLabel)}]</div>` : '';
             return `
               <div data-merge-block data-merge-source="${attr(groupLabel)}" class="${idx < mergedCell.content.length - 1 ? 'mb-2 pb-2 border-b border-gray-200' : ''}">
-                <div class="text-xs text-gray-500 font-semibold mb-1">[${attr(groupLabel)}]</div>
+                ${label}
                 ${content}
               </div>
             `;
           }).join('');
-          if (isConflict(mergedCell.groups)) td.style.backgroundColor = '#fef3c7'; // Light yellow for conflicts
+          if (conflict) td.style.backgroundColor = '#fef3c7'; // Light yellow for conflicts
         }
       } else {
         td.innerHTML = '';
@@ -276,7 +280,8 @@ export function mergeHTMLTables(htmlPerGroup: Record<string, string>, labels: Me
   // Combine table and info
   const container = document.createElement('div');
   container.appendChild(mergedTable);
-  container.appendChild(infoDiv);
+  // only when the student's own groups were merged (not for a group + its on-line lectures)
+  if (conflicts) container.appendChild(infoDiv);
 
   return container.outerHTML;
 }
