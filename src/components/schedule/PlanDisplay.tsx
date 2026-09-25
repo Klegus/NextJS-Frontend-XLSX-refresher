@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Toggle } from '@/components/ui/Toggle';
 import { Plan } from '@/types/schedule';
-import { convertTimeToMinutes } from '@/lib/utils';
+import { convertTimeToMinutes, getWeekRange } from '@/lib/utils';
 import { useLanguage, localizeWeekdayHeaders } from '@/i18n';
 import { timeSinceUpdate, formatShortDate, formatFullDate } from '@/i18n/format';
 import { SuggestionModal } from '@/components/ui/SuggestionModal';
@@ -52,6 +52,24 @@ const datesInCell = (text: string): Set<string> => {
     return found;
 };
 const MERGE_TOGGLE_KEY = 'planMergeEnabled';
+
+/** Is a class held on the date? Its own list of dates decides; else its meeting numbers
+ * ("zj.2,3", or the meeting of its sheet) dated by the meeting calendar and matched by week
+ * (on-line classes may fall on a day the calendar omits, e.g. Thursday); a class with
+ * neither is held every week. */
+const heldOn = (text: string, date: Date, zjazdy?: Record<string, string[]>, ownMeeting?: string): boolean => {
+    const dates = datesInCell(text);
+    if (dates.size) return dates.has(`${date.getDate()}.${date.getMonth() + 1}`);
+    const meetings = meetingsInCell(text);
+    if (!meetings.length && ownMeeting) meetings.push(ownMeeting);
+    if (meetings.length && zjazdy) {
+        const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const week = getWeekRange(date);
+        const from = iso(week.start), to = iso(week.end);
+        return meetings.some(n => (zjazdy[n] || []).some(day => day >= from && day <= to));
+    }
+    return true;
+};
 
 export const PlanDisplay: React.FC<PlanDisplayProps> = ({
     plan,
@@ -115,24 +133,9 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
 
         // A class is shown when its list of dates contains the column's date;
         // classes without a list of dates (held every week) are always shown
-        const keep = (text: string, date: Date | null, source?: string | null) => {
-            const zjazdy = (source && plan.zjazdyBySource?.[source]) || plan.zjazdy;
-            if (!date) return true;
-            const dates = datesInCell(text);
-            if (dates.size) return dates.has(`${date.getDate()}.${date.getMonth() + 1}`);
-            // "zj.2,3,5": meeting numbers, dated by the programme's meeting calendar.
-            // Matched by week - on-line classes may fall on a day the calendar omits (Thursday)
-            const meetings = meetingsInCell(text);
-            // a sheet of a single meeting ("zj.5") lists no numbers in its cells
-            const own = source ? plan.meetingBySource?.[source] : plan.meeting;
-            if (!meetings.length && own) meetings.push(own);
-            if (meetings.length && zjazdy) {
-                const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                const from = iso(weekRange.start), to = iso(weekRange.end);
-                return meetings.some(n => (zjazdy[n] || []).some(day => day >= from && day <= to));
-            }
-            return true;
-        };
+        const keep = (text: string, date: Date | null, source?: string | null) =>
+            !date || heldOn(text, date, (source && plan.zjazdyBySource?.[source]) || plan.zjazdy,
+                            source ? plan.meetingBySource?.[source] : plan.meeting);
 
         let hasAnyLessonsInWeek = false;
         for (let i = 1; i < rows.length; i++) {
@@ -322,11 +325,22 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
     
                 if (currentTime >= startTime && currentTime < endTime) {
                     const dayCell = rows[i].cells[todayColumn];
-                    if (dayCell && dayCell.textContent?.trim() && dayCell.innerHTML.trim() !== "&nbsp;") {
+                    // only classes held today - plans that list dates or meetings show
+                    // every date in the cell when the week filter is off
+                    const blocks = dayCell ? [...dayCell.querySelectorAll('[data-merge-block]')] : [];
+                    const held = (dayCell && blocks.length ? blocks : dayCell ? [dayCell] : [])
+                        .filter(el => {
+                            const source = blocks.length ? el.getAttribute('data-merge-source') : null;
+                            return el.textContent?.trim() && heldOn(el.textContent, warsawDate,
+                                (source && plan.zjazdyBySource?.[source]) || plan.zjazdy,
+                                source ? plan.meetingBySource?.[source] : plan.meeting);
+                        })
+                        .map(el => (el.textContent || '').replace(/^\s*\[[^\]]*\]\s*/, '').trim());
+                    if (dayCell && held.length && dayCell.innerHTML.trim() !== "&nbsp;") {
                         // Only highlight non-empty cells
                         dayCell.classList.add('current-time-highlight');
                         currentHighlightRef.current = dayCell;
-                        currentSlot = dayCell.textContent?.trim() || null;
+                        currentSlot = held.join(' · ');
                         
                         // Automatically center the view on non-empty cells
                         dayCell.scrollIntoView({

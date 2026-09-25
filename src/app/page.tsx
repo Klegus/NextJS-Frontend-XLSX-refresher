@@ -226,7 +226,7 @@ export default function HomePage() {
         noTables: t('merge.noTables'),
         mergedFrom: t('merge.mergedFrom'),
         conflictHint: t('merge.conflictHint'),
-      }),
+      }, { conflicts: !plan.meetingBySource }),
     };
   }, [plan, t]);
 

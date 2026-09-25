@@ -23,7 +23,16 @@ const DEFAULT_LABELS: MergeLabels = {
   conflictHint: 'Komórki z żółtym tłem zawierają zajęcia z różnych grup występujące w tym samym czasie',
 };
 
-export function mergeHTMLTables(htmlPerGroup: Record<string, string>, labels: MergeLabels = DEFAULT_LABELS): string {
+const escapeHtml = (v: string) => v.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+
+export interface MergeOptions {
+  // false for a plan published in parts (sheets of different meetings, on-line lectures):
+  // classes in one cell are held on different dates, so they are not a conflict
+  conflicts?: boolean;
+}
+
+export function mergeHTMLTables(htmlPerGroup: Record<string, string>, labels: MergeLabels = DEFAULT_LABELS,
+                                { conflicts = true }: MergeOptions = {}): string {
   console.log('=== Starting HTML merge ===');
   console.log('Groups to merge:', Object.keys(htmlPerGroup));
 
@@ -224,7 +233,7 @@ export function mergeHTMLTables(htmlPerGroup: Record<string, string>, labels: Me
       if (mergedCell && mergedCell.content.length > 0) {
         // Every block remembers its source sheet (data-merge-source): the week filter
         // dates "zj.N" with the meeting calendar of that sheet
-        const attr = (v: string) => v.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+        const attr = escapeHtml;
         if (mergedCell.content.length === 1) {
           // Single content - display normally
           td.innerHTML = `<div data-merge-block data-merge-source="${attr(mergedCell.groups[0])}">${mergedCell.content[0]}</div>`;
@@ -240,7 +249,7 @@ export function mergeHTMLTables(htmlPerGroup: Record<string, string>, labels: Me
               </div>
             `;
           }).join('');
-          td.style.backgroundColor = '#fef3c7'; // Light yellow for conflicts
+          if (conflicts) td.style.backgroundColor = '#fef3c7'; // Light yellow for conflicts
         }
       } else {
         td.innerHTML = '';
@@ -258,9 +267,8 @@ export function mergeHTMLTables(htmlPerGroup: Record<string, string>, labels: Me
   const infoDiv = document.createElement('div');
   infoDiv.className = 'mt-4 p-3 bg-blue-50 rounded-md text-sm text-blue-700';
   infoDiv.innerHTML = `
-    <strong>${labels.mergedFrom}</strong> ${Object.keys(htmlPerGroup).join(', ')}
-    <br>
-    <span class="text-xs">${labels.conflictHint}</span>
+    <strong>${labels.mergedFrom}</strong> ${Object.keys(htmlPerGroup).map(escapeHtml).join(', ')}
+    ${conflicts ? `<br><span class="text-xs">${labels.conflictHint}</span>` : ''}
   `;
 
   // Combine table and info
