@@ -24,6 +24,33 @@ interface PlanStatus {
 }
 
 const FILTER_TOGGLE_KEY = 'planFilterEnabled';
+
+const WEEKDAYS = ['poniedzialek', 'wtorek', 'sroda', 'czwartek', 'piatek', 'sobota', 'niedziela'];
+
+/** Offset from Monday (0-6) of a Polish weekday header, null if unknown. */
+const weekdayOffset = (name: string): number | null => {
+    const key = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ł/g, 'l').replace(/[^a-z]/g, '');
+    const i = WEEKDAYS.findIndex(d => key.startsWith(d.slice(0, 4)));
+    return i >= 0 ? i : null;
+};
+
+/** Meeting numbers from the "zj.2,3,5" lists of a cell. */
+const meetingsInCell = (text: string): string[] => {
+    const out: string[] = [];
+    for (const list of text.matchAll(/zj\.?\s*((?:\d{1,2}\s*[,;]?\s*)+)/gi)) {
+        for (const n of list[1].match(/\d{1,2}/g) || []) out.push(String(Number(n)));
+    }
+    return out;
+};
+
+/** Dates ("d.m") from the "daty: 05.10, 12.10" lists of a cell. */
+const datesInCell = (text: string): Set<string> => {
+    const found = new Set<string>();
+    for (const list of text.matchAll(/dat[yae]\s*:?\s*((?:\d{1,2}\.\d{1,2}[\s,;.]*)+)/gi)) {
+        for (const [, d, m] of list[1].matchAll(/(\d{1,2})\.(\d{1,2})/g)) found.add(`${Number(d)}.${Number(m)}`);
+    }
+    return found;
+};
 const MERGE_TOGGLE_KEY = 'planMergeEnabled';
 
 export const PlanDisplay: React.FC<PlanDisplayProps> = ({
@@ -67,50 +94,58 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
         if (!table) return html;
 
         const rows = table.querySelectorAll('tr');
-        const headerRow = rows[0];
-        const headerCells = headerRow.querySelectorAll('th');
+        const headerCells = rows[0].querySelectorAll('th');
 
-        // Aktualizuj nagłówki z datami
+        // Weekday of every column comes from its header (plans have Mon-Fri, Thu-Sun,
+        // Fri-Sun or Mon-Sun columns), never from the column position
+        const columnDates: (Date | null)[] = [];
         headerCells.forEach((cell, index) => {
-            if (index > 0 && index <= 5) { // Tylko dla dni roboczych (pon-pt)
-                const date = new Date(weekRange.start);
-                date.setDate(weekRange.start.getDate() + (index - 1));
-                const originalText = cell.textContent?.split('(')[0].trim() || '';
-                const formattedDate = formatShortDate(date, lang);
-                cell.textContent = `${originalText} (${formattedDate})`;
+            if (index === 0) return;
+            const name = (cell.textContent || '').split('(')[0].trim();
+            const offset = weekdayOffset(name);
+            if (offset === null) {
+                columnDates[index] = null;
+                return;
             }
+            const date = new Date(weekRange.start);
+            date.setDate(weekRange.start.getDate() + offset);
+            columnDates[index] = date;
+            cell.textContent = `${name} (${formatShortDate(date, lang)})`;
         });
 
-        // Sprawdź czy są jakiekolwiek zajęcia w tym tygodniu
+        // A class is shown when its list of dates contains the column's date;
+        // classes without a list of dates (held every week) are always shown
+        const keep = (text: string, date: Date | null, source?: string | null) => {
+            const zjazdy = (source && plan.zjazdyBySource?.[source]) || plan.zjazdy;
+            if (!date) return true;
+            const dates = datesInCell(text);
+            if (dates.size) return dates.has(`${date.getDate()}.${date.getMonth() + 1}`);
+            // "zj.2,3,5": meeting numbers, dated by the programme's meeting calendar.
+            // Matched by week - on-line classes may fall on a day the calendar omits (Thursday)
+            const meetings = meetingsInCell(text);
+            if (meetings.length && zjazdy) {
+                const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                const from = iso(weekRange.start), to = iso(weekRange.end);
+                return meetings.some(n => (zjazdy[n] || []).some(day => day >= from && day <= to));
+            }
+            return true;
+        };
+
         let hasAnyLessonsInWeek = false;
-
-        // Filtruj wiersze z lekcjami
         for (let i = 1; i < rows.length; i++) {
-            const row = rows[i];
-            const cells = row.querySelectorAll('td');
-
-            cells.forEach((cell, index) => {
-                if (index === 0) return; // Pomijamy kolumnę z godzinami
-                if (index > 5) { // Wyczyść zawartość kolumn po piątku
+            rows[i].querySelectorAll('td').forEach((cell, index) => {
+                if (index === 0 || !cell.textContent?.trim()) return;
+                const date = columnDates[index] ?? null;
+                // Merged plans (group + on-line lectures, group + specialisation) hold
+                // several classes in one cell - each is judged on its own dates
+                const blocks = cell.querySelectorAll('[data-merge-block]');
+                if (blocks.length) {
+                    blocks.forEach(b => { if (!keep(b.textContent || '', date, b.getAttribute('data-merge-source'))) b.remove(); });
+                    if (!cell.querySelector('[data-merge-block]')) cell.innerHTML = '';
+                } else if (!keep(cell.textContent || '', date)) {
                     cell.innerHTML = '';
-                    return;
                 }
-
-                const cellContent = cell.innerHTML;
-                if (cellContent && cellContent.trim() !== '') {
-                    const date = new Date(weekRange.start);
-                    date.setDate(weekRange.start.getDate() + (index - 1));
-                    const dateStr = date.toLocaleDateString('pl-PL', {
-                        day: '2-digit',
-                        month: '2-digit'
-                    });
-
-                    if (!cellContent.includes(dateStr)) {
-                        cell.innerHTML = '';
-                    } else {
-                        hasAnyLessonsInWeek = true;
-                    }
-                }
+                if (cell.textContent?.trim()) hasAnyLessonsInWeek = true;
             });
         }
 
@@ -222,7 +257,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
     const updatePlanContent = useCallback(() => {
         let processedHtml = processHtml(plan.html);
         
-        if (plan.category === 'st' && currentWeek && filterEnabled) {
+        if (currentWeek && filterEnabled) {
             processedHtml = filterPlanForCurrentWeek(processedHtml, currentWeek);
         }
         
@@ -248,9 +283,14 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
             const table = containerRef.current.querySelector('table');
             if (!table) return;
     
-            // Skip weekends regardless of category
-            if (currentDay === 0 || currentDay === 6) {
-                onTimeSlotChange?.(t('plan.weekend'), null);
+            // Today's column from the (Polish) day headers of the plan - weekend studies
+            // have Thu-Sun or Fri-Sun columns, so the column is not getDay()
+            const headerDoc = new DOMParser().parseFromString(plan.html || '', 'text/html');
+            const offsets = [...headerDoc.querySelectorAll('tr:first-child th')]
+                .map(th => weekdayOffset((th.textContent || '').split('(')[0].trim()));
+            const todayColumn = offsets.indexOf((currentDay + 6) % 7);
+            if (todayColumn < 1) {
+                onTimeSlotChange?.(currentDay === 0 || currentDay === 6 ? t('plan.weekend') : null, null);
                 return;
             }
     
@@ -278,7 +318,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                 const endTime = convertTimeToMinutes(timeParts[1]);
     
                 if (currentTime >= startTime && currentTime < endTime) {
-                    const dayCell = rows[i].cells[currentDay];
+                    const dayCell = rows[i].cells[todayColumn];
                     if (dayCell && dayCell.textContent?.trim() && dayCell.innerHTML.trim() !== "&nbsp;") {
                         // Only highlight non-empty cells
                         dayCell.classList.add('current-time-highlight');
@@ -352,15 +392,17 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                     </span>
                 </div>
 
-                {plan.category === 'st' && (
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                        <Toggle
-                            checked={filterEnabled}
-                            onChange={handleFilterToggle}
-                            label={t('plan.filterWeek')}
-                        />
-                        <span className="text-xs text-ink-muted select-none">{t('plan.filterWeek')}</span>
-                    </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                    <Toggle
+                        checked={filterEnabled}
+                        onChange={handleFilterToggle}
+                        label={t('plan.filterWeek')}
+                    />
+                    <span className="text-xs text-ink-muted select-none">{t('plan.filterWeek')}</span>
+                </label>
+                {filterEnabled && !plan.zjazdy && !Object.values(plan.zjazdyBySource || {}).some(Boolean)
+                    && /zj\.?\s*\d/i.test(plan.html || '') && (
+                    <span className="text-xs text-amber-700">{t('plan.noMeetingCalendar')}</span>
                 )}
 
                 <label className="flex items-center gap-1.5 cursor-pointer">

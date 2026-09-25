@@ -144,6 +144,7 @@ export default function HomePage() {
               html: '',
               htmlPerGroup: response.htmls,
               notes: response.notes,
+              zjazdy: response.zjazdy,
               timestamp: response.timestamp,
               category: response.category || selection.category || null,
               mixed: true
@@ -169,7 +170,27 @@ export default function HomePage() {
         setPlanLoading(true);
         try {
           const newPlan = await getPlan(selection.plan, selection.group);
-          setPlan(newPlan);
+          if (newPlan.companion && Object.keys(newPlan.companion.groups).length) {
+            // Weekend studies: the student's on-site group plus the on-line lectures
+            const extra = Object.entries(newPlan.companion.groups);
+            const label = (g: string) => extra.length > 1 ? `${newPlan.companion!.label}: ${g}` : newPlan.companion!.label;
+            setPlan({
+              ...newPlan,
+              html: '',
+              mixed: true,
+              htmlPerGroup: {
+                [selection.group]: newPlan.html,
+                ...Object.fromEntries(extra.map(([g, html]) => [label(g), html])),
+              },
+              // on-site and on-line sheets number their meetings separately
+              zjazdyBySource: {
+                [selection.group]: newPlan.zjazdy,
+                ...Object.fromEntries(extra.map(([g]) => [label(g), newPlan.companion!.zjazdy])),
+              },
+            });
+          } else {
+            setPlan(newPlan);
+          }
           setError(null);
         } catch (err) {
           setError(planErrorMessage(err));

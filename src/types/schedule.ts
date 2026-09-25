@@ -19,6 +19,9 @@ export interface Plan {
   category: string | null;
   groups?: Record<string, string[]>;
   mixed?: boolean; // Flag indicating this is a mixed plan
+  companion?: { label: string; groups: Record<string, string>; zjazdy?: Record<string, string[]> }; // on-line lectures of weekend studies
+  zjazdy?: Record<string, string[]>; // meeting number -> ISO dates (plans listing "zj.2,3")
+  zjazdyBySource?: Record<string, Record<string, string[]> | undefined>; // merged plans: calendar of each sheet
 }
 
 export interface PlanData {

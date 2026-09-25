@@ -49,11 +49,21 @@ export async function GET(
 
     const data = await response.json();
 
+    // Weekend studies: on-line lectures published as a separate sheet come along
+    const companion = data.companion?.groups ? {
+      label: String(data.companion.label || ''),
+      groups: Object.fromEntries(Object.entries(data.companion.groups as Record<string, string>)
+        .map(([g, html]) => [g, protectLecturers(html)])),
+      zjazdy: data.companion.zjazdy || undefined,
+    } : undefined;
+
     return NextResponse.json({
       plan_html: protectLecturers(data.plan_html),
       notes: data.notes,
       timestamp: data.timestamp,
-      category: data.category
+      category: data.category,
+      ...(companion ? { companion } : {}),
+      ...(data.zjazdy ? { zjazdy: data.zjazdy } : {}),
     });
 
   } catch (error) {

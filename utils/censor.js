@@ -60,7 +60,7 @@ export function censorLecturerNamesInHtml(htmlContent) {
     
     // Wzorzec dla złożonych tytułów - obsługuje np. "mgr inż. arch. Imię Nazwisko"
     let result = htmlContent.replace(
-      /((?:mgr|dr|prof\.|dr hab\.|inż\.|arch\.)(?:\s+(?:mgr|dr|prof\.|dr hab\.|inż\.|arch\.))*)\s+([A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+)\s+([A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+(?:-[A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+)?)/g,
+      /((?:mgr|dr(?:\s+n\.\s*(?:med|o\s*zdr|farm|hum|społ)\.)?|prof\.?|dr hab\.?|inż\.?|arch\.?)(?:\s+(?:mgr|dr(?:\s+n\.\s*(?:med|o\s*zdr|farm|hum|społ)\.)?|prof\.?|dr hab\.?|inż\.?|arch\.?))*)\s+([A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+)\s+([A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+(?:-[A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+)?)/g,
       (match, titles, firstName, lastName) => {
         const cleanTitles = titles.trim();
         return `${cleanTitles} ${firstName[0]}. ${processHyphenatedLastName(lastName)}`;
@@ -69,7 +69,7 @@ export function censorLecturerNamesInHtml(htmlContent) {
 
     // Wzorzec dla złożonych tytułów z kilkoma imionami - obsługuje np. "mgr inż. arch. Imię Drugie Nazwisko"
     result = result.replace(
-      /((?:mgr|dr|prof\.|dr hab\.|inż\.|arch\.)(?:\s+(?:mgr|dr|prof\.|dr hab\.|inż\.|arch\.))*)\s+([A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+)\s+([A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+)\s+([A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+(?:-[A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+)?)/g,
+      /((?:mgr|dr(?:\s+n\.\s*(?:med|o\s*zdr|farm|hum|społ)\.)?|prof\.?|dr hab\.?|inż\.?|arch\.?)(?:\s+(?:mgr|dr(?:\s+n\.\s*(?:med|o\s*zdr|farm|hum|społ)\.)?|prof\.?|dr hab\.?|inż\.?|arch\.?))*)\s+([A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+)\s+([A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+)\s+([A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+(?:-[A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+)?)/g,
       (match, titles, firstName, middleName, lastName) => {
         const cleanTitles = titles.trim();
         return `${cleanTitles} ${firstName[0]}. ${middleName[0]}. ${processHyphenatedLastName(lastName)}`;
@@ -78,7 +78,7 @@ export function censorLecturerNamesInHtml(htmlContent) {
 
     // Wzorzec dla pojedynczych tytułów - standardowe przypadki: mgr Imię Nazwisko
     result = result.replace(
-      /(mgr|dr|prof\.|dr hab\.|inż\.|dr inż\.|mgr inż\.)\s+([A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+)\s+([A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+(?:-[A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+)?)/g,
+      /(mgr|dr|prof\.?|dr hab\.?|inż\.?|dr inż\.?|mgr inż\.?)\s+([A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+)\s+([A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+(?:-[A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+)?)/g,
       (match, title, firstName, lastName) => {
         return `${title} ${firstName[0]}. ${processHyphenatedLastName(lastName)}`;
       }
@@ -86,7 +86,7 @@ export function censorLecturerNamesInHtml(htmlContent) {
 
     // Wzorzec dla pojedynczych tytułów z kilkoma imionami: mgr Imię Drugie Nazwisko
     result = result.replace(
-      /(mgr|dr|prof\.|dr hab\.|inż\.|dr inż\.|mgr inż\.)\s+([A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+)\s+([A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+)\s+([A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+(?:-[A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+)?)/g,
+      /(mgr|dr|prof\.?|dr hab\.?|inż\.?|dr inż\.?|mgr inż\.?)\s+([A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+)\s+([A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+)\s+([A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+(?:-[A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+)?)/g,
       (match, title, firstName, middleName, lastName) => {
         return `${title} ${firstName[0]}. ${middleName[0]}. ${processHyphenatedLastName(lastName)}`;
       }
@@ -94,7 +94,7 @@ export function censorLecturerNamesInHtml(htmlContent) {
 
     // Wzorzec dla samych nazwisk po tytule: mgr Nazwisko lub mgr Nazwisko-Nazwisko2
     result = result.replace(
-      /((?:mgr|dr|prof\.|dr hab\.|inż\.|arch\.)(?:\s+(?:mgr|dr|prof\.|dr hab\.|inż\.|arch\.))*)\s+([A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+(?:-[A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+)?)/g,
+      /((?:mgr|dr(?:\s+n\.\s*(?:med|o\s*zdr|farm|hum|społ)\.)?|prof\.?|dr hab\.?|inż\.?|arch\.?)(?:\s+(?:mgr|dr(?:\s+n\.\s*(?:med|o\s*zdr|farm|hum|społ)\.)?|prof\.?|dr hab\.?|inż\.?|arch\.?))*)\s+([A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+(?:-[A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+)?)/g,
       (match, titles, lastName) => {
         const cleanTitles = titles.trim();
         if (lastName.match(/^[A-ZŻŹĆĄŚĘŁÓŃ][a-zżźćńółęąś]+$/)) {

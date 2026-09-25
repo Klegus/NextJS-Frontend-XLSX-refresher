@@ -59,7 +59,9 @@ export const getPlan = async (collection: string, group: string): Promise<Plan> 
     timestamp: data.timestamp,
     category: data.category,
     mixed: data.mixed,
-    notes: data.notes
+    notes: data.notes,
+    companion: data.companion,
+    zjazdy: data.zjazdy,
   };
 };
 
@@ -69,7 +71,7 @@ export const getPlan = async (collection: string, group: string): Promise<Plan> 
 export const getMixedPlanGroups = async (
   collection: string,
   groups: string[]
-): Promise<{ htmls: Record<string, string>; timestamp: string; category?: string; notes?: PlanNotes | null }> => {
+): Promise<{ htmls: Record<string, string>; timestamp: string; category?: string; notes?: PlanNotes | null; zjazdy?: Record<string, string[]> }> => {
   try {
     console.log('Fetching mixed plan for collection:', collection, 'groups:', groups);
 
@@ -93,7 +95,8 @@ export const getMixedPlanGroups = async (
       htmls: data.group_htmls || {},
       timestamp: data.timestamp,
       category: data.category,
-      notes: data.notes
+      notes: data.notes,
+      zjazdy: data.zjazdy,
     };
   } catch (error) {
     console.error('Error fetching mixed plan groups:', error);

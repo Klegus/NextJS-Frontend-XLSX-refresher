@@ -90,7 +90,14 @@ export function mergeHTMLTables(htmlPerGroup: Record<string, string>, labels: Me
     }
   });
 
-  const dayHeaders = dayHeadersList;
+  // Days in calendar order (Thu from the on-line sheet goes before Fri-Sun of the on-site one)
+  const WEEK = ['pon', 'wto', 'sro', 'czw', 'pia', 'sob', 'nie'];
+  const dayOrder = (html: string) => {
+    const key = html.replace(/<[^>]*>/g, '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().slice(0, 3);
+    const i = WEEK.indexOf(key);
+    return i < 0 ? 99 : i;
+  };
+  const dayHeaders = [dayHeadersList[0], ...dayHeadersList.slice(1).sort((a, b) => dayOrder(a) - dayOrder(b))];
   console.log('Collected day headers from all tables:', dayHeaders);
 
   // Collect all unique time slots from all tables
@@ -215,17 +222,20 @@ export function mergeHTMLTables(htmlPerGroup: Record<string, string>, labels: Me
       const mergedCell = dayMap?.get(dayHeader);
 
       if (mergedCell && mergedCell.content.length > 0) {
+        // Every block remembers its source sheet (data-merge-source): the week filter
+        // dates "zj.N" with the meeting calendar of that sheet
+        const attr = (v: string) => v.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
         if (mergedCell.content.length === 1) {
           // Single content - display normally
-          td.innerHTML = mergedCell.content[0];
+          td.innerHTML = `<div data-merge-block data-merge-source="${attr(mergedCell.groups[0])}">${mergedCell.content[0]}</div>`;
         } else {
           // Multiple contents - show all with separators
           td.innerHTML = mergedCell.content.map((content, idx) => {
             const groupLabel = mergedCell.groups[idx];
             // For cleaner display, only show group label if there's actual conflict
             return `
-              <div class="${idx < mergedCell.content.length - 1 ? 'mb-2 pb-2 border-b border-gray-200' : ''}">
-                <div class="text-xs text-gray-500 font-semibold mb-1">[${groupLabel}]</div>
+              <div data-merge-block data-merge-source="${attr(groupLabel)}" class="${idx < mergedCell.content.length - 1 ? 'mb-2 pb-2 border-b border-gray-200' : ''}">
+                <div class="text-xs text-gray-500 font-semibold mb-1">[${attr(groupLabel)}]</div>
                 ${content}
               </div>
             `;

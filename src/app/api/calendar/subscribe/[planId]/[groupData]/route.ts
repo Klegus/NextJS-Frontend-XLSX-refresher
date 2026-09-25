@@ -99,7 +99,19 @@ export async function GET(
 
       planData = await response.json();
       planData = protectPlanData(planData);
-      console.log('Single plan data received:', Object.keys(planData));
+      if (planData?.companion?.groups && planData.plan_html) {
+        // Weekend studies: on-site group + on-line lectures, parsed like a mixed plan
+        planData.zjazdyByGroup = {
+          [groups[0]]: planData.zjazdy,
+          ...Object.fromEntries(Object.keys(planData.companion.groups).map((g: string) => [g, planData.companion.zjazdy])),
+        };
+        planData.group_htmls = {
+          [groups[0]]: planData.plan_html,
+          ...Object.fromEntries(Object.entries(planData.companion.groups as Record<string, string>)
+            .map(([g, html]) => [g, protectLecturers(html)])),
+        };
+        isMixed = true;
+      }
     }
 
     // Mixed plans have different structure - they have group_htmls instead of plan_html
@@ -301,7 +313,8 @@ function parseHtmlForEvents(planData: any, options: any): CalendarEvent[] {
 
       Object.entries(planData.group_htmls).forEach(([groupName, groupHtml]) => {
         console.log(`Parsing HTML for group: ${groupName}`);
-        const groupEvents = parseSingleHtmlTable(groupHtml as string);
+        // each sheet (on-site / on-line) has its own meeting numbering
+        const groupEvents = parseSingleHtmlTable(groupHtml as string, planData.zjazdyByGroup?.[groupName] || planData.zjazdy);
 
         // Group events by time slot for merging
         groupEvents.forEach(event => {
@@ -335,7 +348,7 @@ function parseHtmlForEvents(planData: any, options: any): CalendarEvent[] {
 
     } else {
       // Single plan - parse normally
-      const parsedEvents = parseSingleHtmlTable(planData.plan_html || planData);
+      const parsedEvents = parseSingleHtmlTable(planData.plan_html || planData, planData.zjazdy);
       events.push(...parsedEvents);
     }
 
@@ -352,7 +365,8 @@ function parseHtmlForEvents(planData: any, options: any): CalendarEvent[] {
   }
 }
 
-function parseSingleHtmlTable(htmlContent: string): CalendarEvent[] {
+// zjazdy: meeting number -> ISO dates, for plans that list "zj.2,3" instead of dates
+function parseSingleHtmlTable(htmlContent: string, zjazdy?: Record<string, string[]>): CalendarEvent[] {
   const events: CalendarEvent[] = [];
 
   try {
@@ -425,17 +439,31 @@ function parseSingleHtmlTable(htmlContent: string): CalendarEvent[] {
           if (roomMatch) location = `Sala ${roomMatch[1]}, WSPA Lublin`;
           if (/on-?line/i.test(cellContent)) location = 'Online';
 
+          const eventDates: string[] = [];
           const datesMatch = cellContent.match(/dat[yae]:?\s*([\d.,;\s]+)/i);
-          if (!datesMatch) return;
-          const specificDates = datesMatch[1].match(/(\d{1,2})\.(\d{1,2})/g) || [];
+          if (datesMatch) {
+            (datesMatch[1].match(/(\d{1,2})\.(\d{1,2})/g) || []).forEach(dateStr => {
+              const [day, month] = dateStr.split('.').map(n => parseInt(n, 10));
+              if (!day || !month || month > 12) return;
+              const year = yearFor(month);
+              eventDates.push(`${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
+            });
+          } else if (zjazdy) {
+            // "zj.2,3,5": the meeting calendar gives the week, the column the weekday
+            // (on-line classes may be on a day the calendar omits, e.g. Thursday)
+            const meetings = cellContent.match(/zj\.?\s*((?:\d{1,2}\s*[,;]?\s*)+)/i);
+            (meetings?.[1].match(/\d{1,2}/g) || []).forEach(n => {
+              const first = (zjazdy[String(Number(n))] || [])[0];
+              if (!first || expectedDow < 0) return;
+              const d = new Date(`${first}T00:00:00Z`);
+              d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7) + ((expectedDow + 6) % 7));
+              eventDates.push(d.toISOString().slice(0, 10));
+            });
+          }
 
-          specificDates.forEach(dateStr => {
-            const [day, month] = dateStr.split('.').map(n => parseInt(n, 10));
-            if (!day || !month || month > 12) return;
-            const year = yearFor(month);
-            const dateObj = new Date(Date.UTC(year, month - 1, day));
+          eventDates.forEach(eventDate => {
+            const dateObj = new Date(`${eventDate}T00:00:00Z`);
             if (expectedDow >= 0 && dateObj.getUTCDay() !== expectedDow) return;
-            const eventDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
             events.push({
               title,
