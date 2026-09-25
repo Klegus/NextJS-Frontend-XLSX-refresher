@@ -10,12 +10,20 @@ import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { WeekControls } from '@/components/schedule/WeekControls';
 import { CurrentLessonInfo } from '@/components/schedule/CurrentLessonInfo';
 import { getWeekRange, shouldShowNextWeek } from '@/lib/utils';
-import { Plan, SelectionState } from '@/types/schedule';
+import { Plan, PlanPart, SelectionState } from '@/types/schedule';
 import { getPlan, getMixedPlanGroups, getPlanMetadata } from '@/lib/api';
 import { mergeHTMLTables } from '@/lib/htmlMerger';
 import { PlanChanges } from '@/components/schedule/PlanChanges';
 import { PlanNotes } from '@/components/schedule/PlanNotes';
 import { useLanguage, TKey } from '@/i18n';
+
+// Sheets of a plan published in parts, one source per group: "zajęcia on-line",
+// "zjazd 5" or "zajęcia on-line: <group>" when a sheet brings several groups
+const partSources = (parts?: PlanPart[]) => (parts || [])
+  .filter(p => Object.keys(p.groups).length)
+  .flatMap(p => Object.entries(p.groups).map(([g, html]) => ({
+    label: Object.keys(p.groups).length > 1 ? `${p.label}: ${g}` : p.label, html, part: p,
+  })));
 
 // Plan hidden by source validation (backend 423) gets its own message.
 // Zwracamy klucz tłumaczenia – dla 423 zawsze komunikat frontendu (backend zwraca tekst tylko po polsku)
@@ -139,10 +147,19 @@ export default function HomePage() {
 
             // Merge the HTML tables client-side
             // Merge happens in displayPlan (translated labels)
+            // on-line lectures of a plan published in parts come along
+            const sources = partSources(response.parts);
             setPlan({
               id: `${selection.plan}-mixed`,
               html: '',
-              htmlPerGroup: response.htmls,
+              htmlPerGroup: { ...response.htmls, ...Object.fromEntries(sources.map(s => [s.label, s.html])) },
+              ...(sources.length ? {
+                zjazdyBySource: {
+                  ...Object.fromEntries(Object.keys(response.htmls).map(g => [g, response.zjazdy])),
+                  ...Object.fromEntries(sources.map(s => [s.label, s.part.zjazdy])),
+                },
+                meetingBySource: Object.fromEntries(sources.map(s => [s.label, s.part.meeting || undefined])),
+              } : {}),
               notes: response.notes,
               zjazdy: response.zjazdy,
               timestamp: response.timestamp,
@@ -170,15 +187,11 @@ export default function HomePage() {
         setPlanLoading(true);
         try {
           const newPlan = await getPlan(selection.plan, selection.group);
-          const parts = (newPlan.parts || (newPlan.companion ? [newPlan.companion] : []))
-            .filter(p => Object.keys(p.groups).length);
-          if (parts.length) {
+          const sources = partSources(newPlan.parts || (newPlan.companion ? [newPlan.companion] : []));
+          if (sources.length) {
             // Plan published in parts: the student's sheet plus the on-line lectures
             // and the sheets of the other meetings, shown as one timetable
             const own = newPlan.meeting ? `zjazd ${newPlan.meeting}` : selection.group;
-            const sources = parts.flatMap(p => Object.entries(p.groups).map(([g, html]) => ({
-              label: Object.keys(p.groups).length > 1 ? `${p.label}: ${g}` : p.label, html, part: p,
-            })));
             setPlan({
               ...newPlan,
               html: '',
@@ -226,7 +239,7 @@ export default function HomePage() {
         noTables: t('merge.noTables'),
         mergedFrom: t('merge.mergedFrom'),
         conflictHint: t('merge.conflictHint'),
-      }, { conflicts: !plan.meetingBySource }),
+      }, { independent: Object.keys(plan.meetingBySource || {}) }),
     };
   }, [plan, t]);
 

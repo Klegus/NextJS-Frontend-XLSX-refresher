@@ -69,6 +69,15 @@ export async function POST(
         Object.entries(data.group_htmls as Record<string, string>).map(([g, html]) => [g, protectLecturers(html)])
       );
     }
+    // other sheets of a plan published in parts (on-line lectures) - lecturers protected as well
+    if (Array.isArray(data?.parts)) {
+      data.parts = data.parts
+        .filter((p: { groups?: unknown }) => p && typeof p.groups === 'object' && p.groups)
+        .map((p: { groups: Record<string, string> }) => ({
+          ...p,
+          groups: Object.fromEntries(Object.entries(p.groups).map(([g, html]) => [g, protectLecturers(String(html))])),
+        }));
+    }
 
     return NextResponse.json(data);
 

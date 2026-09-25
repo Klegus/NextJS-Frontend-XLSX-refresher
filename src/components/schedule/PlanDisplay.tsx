@@ -6,6 +6,7 @@ import { useLanguage, localizeWeekdayHeaders } from '@/i18n';
 import { timeSinceUpdate, formatShortDate, formatFullDate } from '@/i18n/format';
 import { SuggestionModal } from '@/components/ui/SuggestionModal';
 import { sanitizeHtml } from '@/lib/sanitize';
+import { parseMeetings, hasMeetingNumbers } from '@/lib/meetings';
 
 interface PlanDisplayProps {
   plan: Plan;
@@ -35,18 +36,12 @@ const weekdayOffset = (name: string): number | null => {
 };
 
 /** Meeting numbers from the "zj.2,3,5" lists of a cell. */
-const meetingsInCell = (text: string): string[] => {
-    const out: string[] = [];
-    for (const list of text.matchAll(/zj\.?\s*((?:\d{1,2}\s*[,;]?\s*)+)/gi)) {
-        for (const n of list[1].match(/\d{1,2}/g) || []) out.push(String(Number(n)));
-    }
-    return out;
-};
+const meetingsInCell = (text: string): string[] => parseMeetings(text).meetings;
 
-/** Dates ("d.m") from the "daty: 05.10, 12.10" lists of a cell. */
+/** Dates ("d.m") from the "daty: 05.10, 12.10" lists of a cell (or "zj. 17.11, 15.12"). */
 const datesInCell = (text: string): Set<string> => {
-    const found = new Set<string>();
-    for (const list of text.matchAll(/dat[yae]\s*:?\s*((?:\d{1,2}\.\d{1,2}[\s,;.]*)+)/gi)) {
+    const found = parseMeetings(text).dates;
+    for (const list of text.matchAll(/\bdat[yae]\b\s*:?\s*((?:\d{1,2}\.\d{1,2}[\s,;.]*)+)/gi)) {
         for (const [, d, m] of list[1].matchAll(/(\d{1,2})\.(\d{1,2})/g)) found.add(`${Number(d)}.${Number(m)}`);
     }
     return found;
@@ -152,7 +147,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
     // Plan lists meeting numbers but no calendar of them was found: the week filter
     // cannot tell the weeks apart, so the whole plan is shown instead of guessing
     const hasCalendar = !!plan.zjazdy || Object.values(plan.zjazdyBySource || {}).some(Boolean);
-    const noMeetingCalendar = !hasCalendar && /zj\.?\s*\d/i.test(plan.html || '');
+    const noMeetingCalendar = !hasCalendar && hasMeetingNumbers(plan.html || '');
 
     // Whole semester view: classes listed by meeting numbers get their dates
     const addMeetingDates = (html: string) => {
@@ -207,11 +202,37 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
             cell.textContent = `${name} (${formatShortDate(date, lang)})`;
         });
 
+        // Sheets of weekend / part-time meetings: most classes list meeting numbers or dates.
+        // A class there without either cannot be placed in a week, so the week view leaves
+        // it out (the whole-semester view still shows it)
+        const counts = new Map<string | null, { dated: number; all: number }>();
+        rows.forEach((row, i) => i > 0 && row.querySelectorAll('td').forEach((cell, index) => {
+            if (index === 0) return;
+            lessonsOf(cell).forEach(u => {
+                const text = u.textContent || '';
+                if (!text.trim()) return;
+                const source = sourceOf(u);
+                const c = counts.get(source) || { dated: 0, all: 0 };
+                const own = source ? plan.meetingBySource?.[source] : plan.meeting;
+                c.all++;
+                if (own || datesInCell(text).size || meetingsInCell(text).length) c.dated++;
+                counts.set(source, c);
+            });
+        }));
+        const meetingSheet = (source: string | null) => {
+            const c = counts.get(source);
+            const zjazdy = (source && plan.zjazdyBySource?.[source]) || plan.zjazdy;
+            return !!zjazdy && !!c && c.dated * 2 >= c.all;
+        };
+
         // A class is shown when its list of dates contains the column's date;
         // classes without a list of dates (held every week) are always shown
-        const keep = (text: string, date: Date | null, source?: string | null) =>
-            !date || heldOn(text, date, (source && plan.zjazdyBySource?.[source]) || plan.zjazdy,
-                            source ? plan.meetingBySource?.[source] : plan.meeting);
+        const keep = (text: string, date: Date | null, source?: string | null) => {
+            if (!date) return true;
+            const own = source ? plan.meetingBySource?.[source] : plan.meeting;
+            if (!own && !datesInCell(text).size && !meetingsInCell(text).length && meetingSheet(source ?? null)) return false;
+            return heldOn(text, date, (source && plan.zjazdyBySource?.[source]) || plan.zjazdy, own);
+        };
 
         let hasAnyLessonsInWeek = false;
         for (let i = 1; i < rows.length; i++) {
@@ -223,7 +244,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                 // and a cell may hold several classes - each is judged on its own dates
                 const units = lessonsOf(cell);
                 if (units[0] === cell) {
-                    if (!keep(cell.textContent || '', date)) cell.innerHTML = '';
+                    if (!keep(cell.textContent || '', date, null)) cell.innerHTML = '';
                 } else {
                     const withLessons = [...cell.querySelectorAll('[data-merge-block]')].filter(b => b.querySelector('[data-lesson]'));
                     units.forEach(u => { if (!keep(u.textContent || '', date, sourceOf(u))) u.remove(); });

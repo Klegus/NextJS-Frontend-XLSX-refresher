@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { ServerStatus, Plan, Comparison, PlanGroup, PlanNotes } from '@/types/schedule';
+import { ServerStatus, Plan, Comparison, PlanGroup, PlanNotes, PlanPart } from '@/types/schedule';
 import { PlanData } from '@/types/schedule';
 import { ApiResponse, PlansResponse } from '@/types/api';
 import { facultiesResponse, pl } from '@/types/api';
@@ -73,7 +73,7 @@ export const getPlan = async (collection: string, group: string): Promise<Plan> 
 export const getMixedPlanGroups = async (
   collection: string,
   groups: string[]
-): Promise<{ htmls: Record<string, string>; timestamp: string; category?: string; notes?: PlanNotes | null; zjazdy?: Record<string, string[]> }> => {
+): Promise<{ htmls: Record<string, string>; timestamp: string; category?: string; notes?: PlanNotes | null; zjazdy?: Record<string, string[]>; parts?: PlanPart[] }> => {
   try {
     console.log('Fetching mixed plan for collection:', collection, 'groups:', groups);
 
@@ -99,6 +99,7 @@ export const getMixedPlanGroups = async (
       category: data.category,
       notes: data.notes,
       zjazdy: data.zjazdy,
+      parts: data.parts,
     };
   } catch (error) {
     console.error('Error fetching mixed plan groups:', error);

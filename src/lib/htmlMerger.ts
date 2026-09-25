@@ -26,13 +26,15 @@ const DEFAULT_LABELS: MergeLabels = {
 const escapeHtml = (v: string) => v.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 
 export interface MergeOptions {
-  // false for a plan published in parts (sheets of different meetings, on-line lectures):
-  // classes in one cell are held on different dates, so they are not a conflict
-  conflicts?: boolean;
+  // Sources that never collide with the others: sheets of a plan published in parts
+  // (other meetings, on-line lectures) are held on different dates
+  independent?: string[];
 }
 
 export function mergeHTMLTables(htmlPerGroup: Record<string, string>, labels: MergeLabels = DEFAULT_LABELS,
-                                { conflicts = true }: MergeOptions = {}): string {
+                                { independent = [] }: MergeOptions = {}): string {
+  const isConflict = (groups: string[]) => groups.filter(g => !independent.includes(g)).length > 1;
+  const conflicts = Object.keys(htmlPerGroup).filter(g => !independent.includes(g)).length > 1;
   console.log('=== Starting HTML merge ===');
   console.log('Groups to merge:', Object.keys(htmlPerGroup));
 
@@ -249,7 +251,7 @@ export function mergeHTMLTables(htmlPerGroup: Record<string, string>, labels: Me
               </div>
             `;
           }).join('');
-          if (conflicts) td.style.backgroundColor = '#fef3c7'; // Light yellow for conflicts
+          if (isConflict(mergedCell.groups)) td.style.backgroundColor = '#fef3c7'; // Light yellow for conflicts
         }
       } else {
         td.innerHTML = '';

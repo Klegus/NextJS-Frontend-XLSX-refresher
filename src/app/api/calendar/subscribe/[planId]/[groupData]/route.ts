@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { protectLecturers } from '@/lib/lecturers';
+import { parseMeetings } from '@/lib/meetings';
 import { API_URL } from '@/lib/config';
 
 import { denyWithoutAccess } from '@/lib/guard';
@@ -87,6 +88,21 @@ export async function GET(
       planData = await response.json();
       planData = protectPlanData(planData);
       console.log('Mixed plan data received:', Object.keys(planData));
+      // on-line lectures of a plan published in parts, with their own meeting numbering
+      const mixedParts = ((Array.isArray(planData?.parts) ? planData.parts : []) as (SheetPart | undefined)[])
+        .filter((p): p is SheetPart & { groups: Record<string, string> } => !!p?.groups && Object.keys(p.groups).length > 0);
+      if (mixedParts.length && planData.group_htmls) {
+        const zjazdyByGroup: Record<string, Record<string, string[]> | undefined> = Object.fromEntries(
+          Object.keys(planData.group_htmls).map((g: string) => [g, planData.zjazdy]));
+        const meetingByGroup: Record<string, string | undefined> = {};
+        mixedParts.forEach(p => Object.entries(p.groups).forEach(([g, html]) => {
+          const key = `${p.label}: ${g}`;
+          planData.group_htmls[key] = protectLecturers(html);
+          zjazdyByGroup[key] = p.zjazdy;
+          meetingByGroup[key] = p.meeting || undefined;
+        }));
+        Object.assign(planData, { zjazdyByGroup, meetingByGroup });
+      }
     } else {
       // Użyj API dla zwykłych planów
       const response = await fetch(`${backendUrl}/api/plan/${encodeURIComponent(resolvedParams.planId)}/${encodeURIComponent(groups[0])}`, {
@@ -451,9 +467,13 @@ function parseSingleHtmlTable(htmlContent: string, zjazdy?: Record<string, strin
           if (/on-?line/i.test(cellContent)) location = 'Online';
 
           const eventDates: string[] = [];
-          const datesMatch = cellContent.match(/dat[yae]:?\s*([\d.,;\s]+)/i);
-          if (datesMatch) {
-            (datesMatch[1].match(/(\d{1,2})\.(\d{1,2})/g) || []).forEach(dateStr => {
+          const written = parseMeetings(cellContent);
+          // whole word followed by a date - not "BIG DATA - laboratorium"
+          const datesMatch = cellContent.match(/\bdat[yae]\b\s*:?\s*((?:\d{1,2}\.\d{1,2}[\s,;.]*)+)/i);
+          // "daty: 5.10, 12.10" or dates after "zj." ("zj. 17.11, 15.12")
+          const dateList = datesMatch ? datesMatch[1] : written.dates.size ? [...written.dates].join(', ') : null;
+          if (dateList) {
+            (dateList.match(/(\d{1,2})\.(\d{1,2})/g) || []).forEach(dateStr => {
               const [day, month] = dateStr.split('.').map(n => parseInt(n, 10));
               if (!day || !month || month > 12) return;
               const year = yearFor(month);
@@ -462,8 +482,7 @@ function parseSingleHtmlTable(htmlContent: string, zjazdy?: Record<string, strin
           } else if (zjazdy) {
             // "zj.2,3,5": the meeting calendar gives the week, the column the weekday
             // (on-line classes may be on a day the calendar omits, e.g. Thursday)
-            const meetings = [...cellContent.matchAll(/zj\.?\s*((?:\d{1,2}\s*[,;]?\s*)+)/gi)]
-              .flatMap(m => m[1].match(/\d{1,2}/g) || []);
+            const meetings = written.meetings;
             if (!meetings.length && meeting) meetings.push(meeting);
             meetings.forEach(n => {
               const first = (zjazdy[String(Number(n))] || [])[0];
