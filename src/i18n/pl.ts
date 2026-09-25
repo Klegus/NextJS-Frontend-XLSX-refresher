@@ -99,7 +99,8 @@ export const pl = {
   },
   plan: {
     filterWeek: 'Filtruj tydzień',
-    noMeetingCalendar: 'Uczelnia nie opublikowała terminów zjazdów – pokazano wszystkie zajęcia',
+    noMeetingCalendar: 'Uczelnia nie opublikowała terminów zjazdów – pokazano cały plan semestru',
+    lessonDates: 'Terminy',
     mergeCells: 'Łącz komórki',
     suggest: 'Zgłoś sugestię lub błąd',
     noLessonsTitle: 'Brak zajęć w tym tygodniu',

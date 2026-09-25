@@ -431,7 +431,9 @@ function parseSingleHtmlTable(htmlContent: string, zjazdy?: Record<string, strin
       for (let dayIndex = 0; dayIndex < dayCount && (dayIndex + 1) < cellMatches.length; dayIndex++) {
         const cell = cellMatches[dayIndex + 1];
         // Plan HTML escapes cell text (&amp;, &lt;, ...) - the calendar needs plain text
-        const cellText = decodeHtmlEntities(cell.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '')).trim();
+        // classes of one cell come as <div data-lesson> - a blank line between them, as in Excel
+        const cellText = decodeHtmlEntities(cell.replace(/<br\s*\/?>/gi, '\n').replace(/<\/div>/gi, '\n\n')
+          .replace(/<[^>]*>/g, '')).trim();
         if (!cellText) continue;
 
         const expectedDow = columnDayOfWeek[dayIndex];

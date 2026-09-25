@@ -57,18 +57,63 @@ const MERGE_TOGGLE_KEY = 'planMergeEnabled';
  * ("zj.2,3", or the meeting of its sheet) dated by the meeting calendar and matched by week
  * (on-line classes may fall on a day the calendar omits, e.g. Thursday); a class with
  * neither is held every week. */
-const heldOn = (text: string, date: Date, zjazdy?: Record<string, string[]>, ownMeeting?: string): boolean => {
+const isoDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+// strict: a class with meeting numbers but no meeting calendar counts as not held
+// (the current class must be certain; the week filter rather shows it)
+const heldOn = (text: string, date: Date, zjazdy?: Record<string, string[]>, ownMeeting?: string,
+                strict = false): boolean => {
     const dates = datesInCell(text);
     if (dates.size) return dates.has(`${date.getDate()}.${date.getMonth() + 1}`);
     const meetings = meetingsInCell(text);
     if (!meetings.length && ownMeeting) meetings.push(ownMeeting);
     if (meetings.length && zjazdy) {
-        const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         const week = getWeekRange(date);
-        const from = iso(week.start), to = iso(week.end);
+        const from = isoDate(week.start), to = isoDate(week.end);
         return meetings.some(n => (zjazdy[n] || []).some(day => day >= from && day <= to));
     }
-    return true;
+    return !(strict && meetings.length);
+};
+
+/** Dates of a class listed by meeting numbers, in the column's weekday (offset from Monday). */
+const meetingDates = (text: string, weekday: number, zjazdy?: Record<string, string[]>, ownMeeting?: string): Date[] => {
+    if (!zjazdy || datesInCell(text).size) return [];
+    const meetings = meetingsInCell(text);
+    if (!meetings.length && ownMeeting) meetings.push(ownMeeting);
+    return [...new Set(meetings)].flatMap(n => {
+        const first = zjazdy[n]?.[0];
+        if (!first) return [];
+        const monday = getWeekRange(new Date(`${first}T12:00:00`)).start;
+        return [new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + weekday, 12)];
+    }).sort((a, b) => a.getTime() - b.getTime());
+};
+
+/** Classes of a cell: several classes in one cell are <div data-lesson>, merged plans
+ * wrap every sheet's content in a merge block; otherwise the cell itself. */
+const lessonsOf = (cell: Element): Element[] => {
+    const lessons = [...cell.querySelectorAll('[data-lesson]')];
+    const blocks = [...cell.querySelectorAll('[data-merge-block]')].filter(b => !b.querySelector('[data-lesson]'));
+    return lessons.length || blocks.length ? [...blocks, ...lessons] : [cell];
+};
+const sourceOf = (el: Element) => el.closest('[data-merge-block]')?.getAttribute('data-merge-source') ?? null;
+
+/** "Subject - type ..." -> bold subject on its own line (first text of the class, not the merge label). */
+const boldSubject = (el: Element) => {
+    const doc = el.ownerDocument;
+    const walker = doc.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const text = node.textContent || '';
+        if (!text.trim() || node.parentElement?.closest('.text-xs')) continue;
+        const m = text.match(/^(\s*)(.+?)\s+[-–]\s+/);
+        if (!m) return;
+        const strong = doc.createElement('strong');
+        strong.className = 'text-wspia-gray';
+        strong.textContent = m[2];
+        node.parentNode?.insertBefore(strong, node);
+        node.parentNode?.insertBefore(doc.createElement('br'), node);
+        node.textContent = text.slice(m[0].length);
+        return;
+    }
 };
 
 export const PlanDisplay: React.FC<PlanDisplayProps> = ({
@@ -103,6 +148,37 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
 
     // Dodajemy stan dla modalu sugestii
     const [showSuggestionModal, setShowSuggestionModal] = useState(false);
+
+    // Plan lists meeting numbers but no calendar of them was found: the week filter
+    // cannot tell the weeks apart, so the whole plan is shown instead of guessing
+    const hasCalendar = !!plan.zjazdy || Object.values(plan.zjazdyBySource || {}).some(Boolean);
+    const noMeetingCalendar = !hasCalendar && /zj\.?\s*\d/i.test(plan.html || '');
+
+    // Whole semester view: classes listed by meeting numbers get their dates
+    const addMeetingDates = (html: string) => {
+        if (!hasCalendar) return html;
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const table = doc.querySelector('table');
+        if (!table) return html;
+        const offsets = [...table.querySelectorAll('tr:first-child th')]
+            .map(th => weekdayOffset((th.textContent || '').split('(')[0].trim()));
+        table.querySelectorAll('tr').forEach(row => row.querySelectorAll('td').forEach((cell, index) => {
+            const weekday = offsets[index];
+            if (index === 0 || weekday === null || weekday === undefined) return;
+            lessonsOf(cell).forEach(lesson => {
+                const source = sourceOf(lesson);
+                const dates = meetingDates(lesson.textContent || '', weekday,
+                    (source && plan.zjazdyBySource?.[source]) || plan.zjazdy,
+                    source ? plan.meetingBySource?.[source] : plan.meeting);
+                if (!dates.length) return;
+                const line = doc.createElement('div');
+                line.className = 'text-xs text-ink-muted mt-0.5';
+                line.textContent = `${t('plan.lessonDates')}: ${dates.map(d => formatShortDate(d, lang)).join(', ')}`;
+                lesson.appendChild(line);
+            });
+        }));
+        return doc.body.innerHTML;
+    };
 
     const filterPlanForCurrentWeek = (html: string, weekRange: { start: Date; end: Date }) => {
         const parser = new DOMParser();
@@ -144,12 +220,15 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                 const date = columnDates[index] ?? null;
                 // Merged plans (group + on-line lectures, group + specialisation) hold
                 // several classes in one cell - each is judged on its own dates
-                const blocks = cell.querySelectorAll('[data-merge-block]');
-                if (blocks.length) {
-                    blocks.forEach(b => { if (!keep(b.textContent || '', date, b.getAttribute('data-merge-source'))) b.remove(); });
-                    if (!cell.querySelector('[data-merge-block]')) cell.innerHTML = '';
-                } else if (!keep(cell.textContent || '', date)) {
-                    cell.innerHTML = '';
+                // and a cell may hold several classes - each is judged on its own dates
+                const units = lessonsOf(cell);
+                if (units[0] === cell) {
+                    if (!keep(cell.textContent || '', date)) cell.innerHTML = '';
+                } else {
+                    const withLessons = [...cell.querySelectorAll('[data-merge-block]')].filter(b => b.querySelector('[data-lesson]'));
+                    units.forEach(u => { if (!keep(u.textContent || '', date, sourceOf(u))) u.remove(); });
+                    withLessons.forEach(b => { if (!b.querySelector('[data-lesson]')) b.remove(); });
+                    if (!cell.querySelector('[data-merge-block], [data-lesson]')) cell.innerHTML = '';
                 }
                 if (cell.textContent?.trim()) hasAnyLessonsInWeek = true;
             });
@@ -186,16 +265,10 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
 
         const rows = table.querySelectorAll('tr');
         
-        // First pass: Make subject names bold
-        rows.forEach((row, rowIndex) => {
-            const cells = row.querySelectorAll('td');
-            cells.forEach((cell, cellIndex) => {
-                if (cellIndex !== 0) { // Skip first column (time)
-                    cell.innerHTML = cell.innerHTML.replace(
-                        /^(.+?)\s+[-–]\s+/,
-                        '<strong class="text-wspia-gray">$1</strong><br/>'
-                    );
-                }
+        // First pass: Make subject names bold (every class of a cell)
+        rows.forEach(row => {
+            row.querySelectorAll('td').forEach((cell, cellIndex) => {
+                if (cellIndex !== 0) lessonsOf(cell).forEach(boldSubject); // Skip first column (time)
             });
         });
 
@@ -263,12 +336,14 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
     const updatePlanContent = useCallback(() => {
         let processedHtml = processHtml(plan.html);
         
-        if (currentWeek && filterEnabled) {
+        if (currentWeek && filterEnabled && !noMeetingCalendar) {
             processedHtml = filterPlanForCurrentWeek(processedHtml, currentWeek);
+        } else {
+            processedHtml = addMeetingDates(processedHtml);
         }
         
         setFilteredHtml(localizeWeekdayHeaders(processedHtml, lang));
-    }, [plan.html, plan.category, currentWeek, filterEnabled, processHtml, filterPlanForCurrentWeek, lang]);
+    }, [plan.html, plan.category, currentWeek, filterEnabled, noMeetingCalendar, processHtml, filterPlanForCurrentWeek, addMeetingDates, lang]);
 
     // Efekt dla aktualizacji planu gdy zmienia się status cenzury lub inne stany
     useEffect(() => {
@@ -327,13 +402,12 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                     const dayCell = rows[i].cells[todayColumn];
                     // only classes held today - plans that list dates or meetings show
                     // every date in the cell when the week filter is off
-                    const blocks = dayCell ? [...dayCell.querySelectorAll('[data-merge-block]')] : [];
-                    const held = (dayCell && blocks.length ? blocks : dayCell ? [dayCell] : [])
+                    const held = (dayCell ? lessonsOf(dayCell) : [])
                         .filter(el => {
-                            const source = blocks.length ? el.getAttribute('data-merge-source') : null;
+                            const source = sourceOf(el);
                             return el.textContent?.trim() && heldOn(el.textContent, warsawDate,
                                 (source && plan.zjazdyBySource?.[source]) || plan.zjazdy,
-                                source ? plan.meetingBySource?.[source] : plan.meeting);
+                                source ? plan.meetingBySource?.[source] : plan.meeting, true);
                         })
                         .map(el => (el.textContent || '').replace(/^\s*\[[^\]]*\]\s*/, '').trim());
                     if (dayCell && held.length && dayCell.innerHTML.trim() !== "&nbsp;") {
@@ -417,8 +491,7 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
                     />
                     <span className="text-xs text-ink-muted select-none">{t('plan.filterWeek')}</span>
                 </label>
-                {filterEnabled && !plan.zjazdy && !Object.values(plan.zjazdyBySource || {}).some(Boolean)
-                    && /zj\.?\s*\d/i.test(plan.html || '') && (
+                {filterEnabled && noMeetingCalendar && (
                     <span className="text-xs text-amber-700">{t('plan.noMeetingCalendar')}</span>
                 )}
 

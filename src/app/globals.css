@@ -581,3 +581,10 @@ input:checked + .slider:hover {
   color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
+
+/* several classes in one cell of the plan (backend wraps each in <div data-lesson>) */
+[data-lesson] + [data-lesson] {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed rgb(0 0 0 / 0.12);
+}

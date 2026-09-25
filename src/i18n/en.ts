@@ -98,7 +98,8 @@ export const en: Dict = {
   },
   plan: {
     filterWeek: 'Filter week',
-    noMeetingCalendar: 'The university has not published the meeting dates – all classes are shown',
+    noMeetingCalendar: 'The university has not published the meeting dates – the whole semester is shown',
+    lessonDates: 'Dates',
     mergeCells: 'Merge cells',
     suggest: 'Send a suggestion or report a bug',
     noLessonsTitle: 'No classes this week',
