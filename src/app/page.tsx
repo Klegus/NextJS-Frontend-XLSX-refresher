@@ -15,6 +15,7 @@ import { getPlan, getMixedPlanGroups, getPlanMetadata } from '@/lib/api';
 import { mergeHTMLTables } from '@/lib/htmlMerger';
 import { PlanChanges } from '@/components/schedule/PlanChanges';
 import { PlanNotes } from '@/components/schedule/PlanNotes';
+import { ScrollToTop } from '@/components/ui/ScrollToTop';
 import { useLanguage, TKey } from '@/i18n';
 
 // Sheets of a plan published in parts, one source per group: "zajęcia on-line",
@@ -432,6 +433,7 @@ export default function HomePage() {
           </div>
         </footer>
       </div>
+      <ScrollToTop />
     </main>
     </>
   );

@@ -7,6 +7,7 @@ export const en: Dict = {
     close: 'Close',
     retry: 'Try again',
     logoAlt: 'WSPA logo',
+    scrollTop: 'Back to top',
   },
   lang: {
     label: 'Language',

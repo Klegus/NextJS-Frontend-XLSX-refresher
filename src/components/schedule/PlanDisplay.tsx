@@ -302,36 +302,6 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
             });
         });
 
-        // Second pass: Merge cells vertically if enabled
-        if (mergeEnabled) {
-            for (let colIndex = 1; colIndex <= 5; colIndex++) {
-                let currentContent = '';
-                let startRow = 0;
-                let spanCount = 0;
-
-                for (let rowIndex = 1; rowIndex < rows.length; rowIndex++) {
-                    const currentCell = rows[rowIndex].cells[colIndex];
-                    if (!currentCell) continue;
-
-                    const cellContent = currentCell.innerHTML.trim();
-
-                    if (cellContent === currentContent && currentContent !== '') {
-                        currentCell.style.display = 'none';
-                        spanCount++;
-                        
-                        const firstCell = rows[startRow].cells[colIndex];
-                        if (firstCell) {
-                            firstCell.rowSpan = spanCount + 1;
-                        }
-                    } else {
-                        currentContent = cellContent;
-                        startRow = rowIndex;
-                        spanCount = 0;
-                    }
-                }
-            }
-        }
-
         return table.outerHTML;
     };
 
@@ -354,6 +324,35 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
     };
 
     // Funkcja do odświeżania zawartości planu
+    // Same class in consecutive hours of a day -> one tall cell. Done last, on what is
+    // actually shown (after the week filter), for every day column (Mon-Sat, Thu-Sun, ...)
+    const mergeVertically = (html: string) => {
+        if (!mergeEnabled) return html;
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const table = doc.querySelector('table');
+        if (!table) return html;
+        const rows = [...table.querySelectorAll('tr')];
+        const columns = rows[0]?.children.length || 0;
+        for (let col = 1; col < columns; col++) {
+            let first: HTMLTableCellElement | null = null;
+            let content = '';
+            for (let r = 1; r < rows.length; r++) {
+                const cell = rows[r].cells[col];
+                if (!cell) continue;
+                // compared as text: after the filter the same class may or may not sit in a <div data-lesson>
+                const html = (cell.textContent || '').replace(/\s+/g, ' ').trim();
+                if (first && html && html === content) {
+                    cell.style.display = 'none';
+                    first.rowSpan += 1;
+                } else {
+                    first = cell;
+                    content = html;
+                }
+            }
+        }
+        return doc.body.innerHTML;
+    };
+
     const updatePlanContent = useCallback(() => {
         let processedHtml = processHtml(plan.html);
         
@@ -362,9 +361,10 @@ export const PlanDisplay: React.FC<PlanDisplayProps> = ({
         } else {
             processedHtml = addMeetingDates(processedHtml);
         }
+        processedHtml = mergeVertically(processedHtml);
         
         setFilteredHtml(localizeWeekdayHeaders(processedHtml, lang));
-    }, [plan.html, plan.category, currentWeek, filterEnabled, noMeetingCalendar, processHtml, filterPlanForCurrentWeek, addMeetingDates, lang]);
+    }, [plan.html, plan.category, currentWeek, filterEnabled, mergeEnabled, noMeetingCalendar, processHtml, filterPlanForCurrentWeek, addMeetingDates, lang]);
 
     // Efekt dla aktualizacji planu gdy zmienia się status cenzury lub inne stany
     useEffect(() => {

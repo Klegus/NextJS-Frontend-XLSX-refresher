@@ -249,7 +249,7 @@ export function mergeHTMLTables(htmlPerGroup: Record<string, string>, labels: Me
             const label = conflict && !independent.includes(groupLabel)
               ? `<div class="text-xs text-gray-500 font-semibold mb-1">[${attr(groupLabel)}]</div>` : '';
             return `
-              <div data-merge-block data-merge-source="${attr(groupLabel)}" class="${idx < mergedCell.content.length - 1 ? 'mb-2 pb-2 border-b border-gray-200' : ''}">
+              <div data-merge-block data-merge-source="${attr(groupLabel)}">
                 ${label}
                 ${content}
               </div>

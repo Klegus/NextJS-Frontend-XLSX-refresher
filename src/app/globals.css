@@ -582,8 +582,10 @@ input:checked + .slider:hover {
   font-variant-numeric: tabular-nums;
 }
 
-/* several classes in one cell of the plan (backend wraps each in <div data-lesson>) */
-[data-lesson] + [data-lesson] {
+/* several classes in one cell of the plan (backend wraps each in <div data-lesson>,
+   merged sheets in <div data-merge-block>) - a line only between classes still shown */
+[data-lesson] + [data-lesson],
+[data-merge-block] + [data-merge-block] {
   margin-top: 0.5rem;
   padding-top: 0.5rem;
   border-top: 1px dashed rgb(0 0 0 / 0.12);

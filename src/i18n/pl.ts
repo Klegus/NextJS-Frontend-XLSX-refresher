@@ -7,6 +7,7 @@ export const pl = {
     close: 'Zamknij',
     retry: 'Spróbuj ponownie',
     logoAlt: 'Logo WSPA',
+    scrollTop: 'Przewiń na górę',
   },
   lang: {
     label: 'Język',

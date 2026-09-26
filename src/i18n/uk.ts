@@ -7,6 +7,7 @@ export const uk: Dict = {
     close: 'Закрити',
     retry: 'Спробувати ще раз',
     logoAlt: 'Логотип WSPA',
+    scrollTop: 'Нагору',
   },
   lang: {
     label: 'Мова',
